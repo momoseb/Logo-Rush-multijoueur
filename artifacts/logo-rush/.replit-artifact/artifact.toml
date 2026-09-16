@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Logo Rush"
+description = "Jeu web de reconnaissance de logos jouable en solo ou à plusieurs en temps réel, avec dépixelisation progressive, salons privés ou publics et classement synchronisé."
+version = "1.0.0"
+id = "artifacts/logo-rush"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20903
+
+[services.development]
+run = "pnpm --filter @workspace/logo-rush run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/logo-rush", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/logo-rush/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20903"
+BASE_PATH = "/"

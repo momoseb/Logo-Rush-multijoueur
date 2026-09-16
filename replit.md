@@ -1,6 +1,6 @@
-# [Project name]
+# Logo Rush
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Jeu web de reconnaissance de marques, jouable en solo ou à plusieurs en temps réel.
 
 ## Run & Operate
 
@@ -9,7 +9,7 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Aucun compte ni secret externe requis pour le MVP.
 
 ## Stack
 
@@ -22,15 +22,19 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/logo-rush` — application React.
+- `artifacts/api-server/src/game.ts` — moteur de jeu et salons temps réel.
+- `lib/api-spec/openapi.yaml` — contrat REST.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- L’état multijoueur et le calcul des points restent exclusivement côté serveur.
+- Les réponses des manches multijoueur ne sont envoyées qu’à la fin de la manche.
+- Le catalogue de démonstration utilise des marques abstraites originales.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Partie solo configurable, dépixelisation progressive, salons publics/privés, lobby, classement en direct et résultats.
 
 ## User preferences
 

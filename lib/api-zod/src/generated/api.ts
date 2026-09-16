@@ -48,10 +48,18 @@ export const ListSoloLogosResponseItem = zod.object({
   "aliases": zod.array(zod.string()),
   "category": zod.string(),
   "difficulty": zod.enum(['easy', 'medium', 'hard']),
-  "imageUrl": zod.string(),
-  "colors": zod.array(zod.string()),
-  "glyph": zod.string()
+  "imageUrl": zod.string()
 })
 export const ListSoloLogosResponse = zod.array(ListSoloLogosResponseItem)
+
+
+/**
+ * @summary Proxies an official logo from Brandfetch
+ */
+export const GetLogoImageParams = zod.object({
+  "logoId": zod.coerce.string()
+})
+
+export const GetLogoImageResponse = zod.unknown()
 
 

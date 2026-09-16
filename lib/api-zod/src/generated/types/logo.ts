@@ -14,6 +14,4 @@ export interface Logo {
   category: string;
   difficulty: LogoDifficulty;
   imageUrl: string;
-  colors: string[];
-  glyph: string;
 }

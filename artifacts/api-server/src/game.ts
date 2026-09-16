@@ -3,13 +3,12 @@ import { logger } from "./lib/logger";
 
 export type Logo = {
   id: string;
+  domain: string;
   answer: string;
   aliases: string[];
   category: string;
   difficulty: "easy" | "medium" | "hard";
   imageUrl: string;
-  colors: string[];
-  glyph: string;
 };
 
 type Player = {
@@ -41,18 +40,23 @@ type Room = {
   lastActiveAt: number;
 };
 
-const mark = (label: string, foreground: string, background: string, shape: string) =>
-  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="${background}"/><path d="${shape}" fill="${foreground}"/><text x="256" y="440" text-anchor="middle" fill="${foreground}" font-family="Arial" font-size="42" font-weight="700" letter-spacing="8">${label}</text></svg>`)}`;
-
 export const logos: Logo[] = [
-  { id: "orbit", answer: "Orbit", aliases: ["orbit labs"], category: "technologie", difficulty: "easy", colors: ["#8b5cf6", "#0f0b2b"], glyph: "O", imageUrl: mark("ORBIT", "#a78bfa", "#120a33", "M256 75a181 181 0 1 0 0 362 181 181 0 0 0 0-362Zm0 72a109 109 0 1 1 0 218 109 109 0 0 1 0-218Z") },
-  { id: "volt", answer: "Volt", aliases: ["volt energy"], category: "automobile", difficulty: "easy", colors: ["#d9ff45", "#142116"], glyph: "V", imageUrl: mark("VOLT", "#d9ff45", "#102015", "M290 55 130 283h99l-8 145 161-240h-99l7-133Z") },
-  { id: "nova", answer: "Nova", aliases: ["nova studio"], category: "cinéma", difficulty: "medium", colors: ["#ff5c7a", "#2b0913"], glyph: "N", imageUrl: mark("NOVA", "#ff6681", "#2b0913", "M256 47 300 191 451 191 329 279 376 423 256 334 136 423 183 279 61 191 212 191Z") },
-  { id: "wave", answer: "Wave", aliases: ["wave social"], category: "réseaux sociaux", difficulty: "medium", colors: ["#36d6ff", "#071d2b"], glyph: "W", imageUrl: mark("WAVE", "#39d7ff", "#071d2b", "M62 285c70-112 132-112 194 0 62 112 124 112 194 0v90c-70 89-132 89-194 0-62-89-124-89-194 0v-90Z") },
-  { id: "ember", answer: "Ember", aliases: ["ember food"], category: "alimentation", difficulty: "hard", colors: ["#ff8a3d", "#2b1107"], glyph: "E", imageUrl: mark("EMBER", "#ff8a3d", "#2b1107", "M266 54c29 90-55 107-28 181 17 47 74 49 86 0 65 69 74 139 28 187-51 54-146 53-196-3-66-74-5-169 110-208-18 89 75 100 0 181 47-18 79-57 81-92Z") },
-  { id: "apex", answer: "Apex", aliases: ["apex sport"], category: "sport", difficulty: "easy", colors: ["#ffffff", "#161820"], glyph: "A", imageUrl: mark("APEX", "#fff", "#151821", "M256 68 447 392h-96l-39-68H198l-38 68H65L256 68Zm0 116-29 61h59l-30-61Z") },
-  { id: "pixel", answer: "Pixel", aliases: ["pixel play"], category: "jeux vidéo", difficulty: "hard", colors: ["#5cf2a5", "#08251a"], glyph: "P", imageUrl: mark("PIXEL", "#5cf2a5", "#08251a", "M94 101h108v108H94V101Zm108 108h108v108H202V209Zm108-108h108v108H310V101ZM94 317h108v108H94V317Zm216 0h108v108H310V317Z") },
-  { id: "lune", answer: "Lune", aliases: ["maison lune"], category: "luxe", difficulty: "medium", colors: ["#f5d99b", "#251d19"], glyph: "L", imageUrl: mark("LUNE", "#f5d99b", "#211916", "M337 70c-91 23-137 126-88 207 34 55 98 82 159 65-38 70-128 103-207 67-94-42-130-155-78-244 43-74 134-112 214-95Z") },
+  { id: "apple", domain: "apple.com", answer: "Apple", aliases: ["apple inc"], category: "technologie", difficulty: "easy", imageUrl: "/api/game/logos/apple/image" },
+  { id: "nike", domain: "nike.com", answer: "Nike", aliases: ["nike inc"], category: "sport", difficulty: "easy", imageUrl: "/api/game/logos/nike/image" },
+  { id: "cocacola", domain: "coca-cola.com", answer: "Coca-Cola", aliases: ["coca cola", "cocacola", "coke"], category: "alimentation", difficulty: "easy", imageUrl: "/api/game/logos/cocacola/image" },
+  { id: "mcdonalds", domain: "mcdonalds.com", answer: "McDonald's", aliases: ["mcdonalds", "macdonalds", "mcdo"], category: "alimentation", difficulty: "easy", imageUrl: "/api/game/logos/mcdonalds/image" },
+  { id: "adidas", domain: "adidas.com", answer: "Adidas", aliases: [], category: "sport", difficulty: "easy", imageUrl: "/api/game/logos/adidas/image" },
+  { id: "tesla", domain: "tesla.com", answer: "Tesla", aliases: ["tesla motors"], category: "automobile", difficulty: "easy", imageUrl: "/api/game/logos/tesla/image" },
+  { id: "spotify", domain: "spotify.com", answer: "Spotify", aliases: [], category: "technologie", difficulty: "easy", imageUrl: "/api/game/logos/spotify/image" },
+  { id: "netflix", domain: "netflix.com", answer: "Netflix", aliases: [], category: "cinéma", difficulty: "easy", imageUrl: "/api/game/logos/netflix/image" },
+  { id: "amazon", domain: "amazon.com", answer: "Amazon", aliases: ["amazon.com"], category: "technologie", difficulty: "medium", imageUrl: "/api/game/logos/amazon/image" },
+  { id: "microsoft", domain: "microsoft.com", answer: "Microsoft", aliases: ["microsoft corporation"], category: "technologie", difficulty: "easy", imageUrl: "/api/game/logos/microsoft/image" },
+  { id: "google", domain: "google.com", answer: "Google", aliases: [], category: "technologie", difficulty: "easy", imageUrl: "/api/game/logos/google/image" },
+  { id: "samsung", domain: "samsung.com", answer: "Samsung", aliases: ["samsung electronics"], category: "technologie", difficulty: "medium", imageUrl: "/api/game/logos/samsung/image" },
+  { id: "lego", domain: "lego.com", answer: "LEGO", aliases: ["the lego group"], category: "jeux vidéo", difficulty: "easy", imageUrl: "/api/game/logos/lego/image" },
+  { id: "pepsi", domain: "pepsi.com", answer: "Pepsi", aliases: ["pepsi cola"], category: "alimentation", difficulty: "medium", imageUrl: "/api/game/logos/pepsi/image" },
+  { id: "starbucks", domain: "starbucks.com", answer: "Starbucks", aliases: ["starbucks coffee"], category: "alimentation", difficulty: "medium", imageUrl: "/api/game/logos/starbucks/image" },
+  { id: "ferrari", domain: "ferrari.com", answer: "Ferrari", aliases: ["scuderia ferrari"], category: "automobile", difficulty: "medium", imageUrl: "/api/game/logos/ferrari/image" },
 ];
 
 const rooms = new Map<string, Room>();
@@ -119,7 +123,7 @@ function startRound(room: Room) {
     roundCount: room.roundCount,
     duration: room.roundDuration,
     startedAt: room.roundStartedAt,
-    logo: { id: logo.id, imageUrl: logo.imageUrl, colors: logo.colors, glyph: logo.glyph, category: logo.category, difficulty: logo.difficulty },
+    logo: { id: logo.id, imageUrl: logo.imageUrl, category: logo.category, difficulty: logo.difficulty },
     players: roomView(room).players,
   });
   room.roundTimer = setTimeout(() => finishRound(room), room.roundDuration * 1000 + 1200);

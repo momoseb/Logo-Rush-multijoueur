@@ -351,3 +351,80 @@ export function useListSoloLogos<TData = Awaited<ReturnType<typeof listSoloLogos
 
 
 
+export const getGetLogoImageUrl = (logoId: string,) => {
+
+
+
+
+  return `/api/game/logos/${logoId}/image`
+}
+
+/**
+ * @summary Proxies an official logo from Brandfetch
+ */
+export const getLogoImage = async (logoId: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetLogoImageUrl(logoId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLogoImageQueryKey = (logoId: string,) => {
+    return [
+    `/api/game/logos/${logoId}/image`
+    ] as const;
+    }
+
+
+export const getGetLogoImageQueryOptions = <TData = Awaited<ReturnType<typeof getLogoImage>>, TError = ErrorType<unknown>>(logoId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLogoImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLogoImageQueryKey(logoId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLogoImage>>> = ({ signal }) => getLogoImage(logoId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: logoId !== null && logoId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLogoImage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLogoImageQueryResult = NonNullable<Awaited<ReturnType<typeof getLogoImage>>>
+export type GetLogoImageQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Proxies an official logo from Brandfetch
+ */
+
+export function useGetLogoImage<TData = Awaited<ReturnType<typeof getLogoImage>>, TError = ErrorType<unknown>>(
+ logoId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLogoImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLogoImageQueryOptions(logoId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+

@@ -9,7 +9,7 @@ Jeu web de reconnaissance de marques, jouable en solo ou à plusieurs en temps r
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Secret requis : `BRANDFETCH_CLIENT_ID`.
+- Variable publique requise : `VITE_BRANDFETCH_CLIENT_ID`.
 
 ## Stack
 
@@ -30,7 +30,7 @@ Jeu web de reconnaissance de marques, jouable en solo ou à plusieurs en temps r
 
 - L’état multijoueur et le calcul des points restent exclusivement côté serveur.
 - Les réponses des manches multijoueur ne sont envoyées qu’à la fin de la manche.
-- Les logos de grandes marques sont chargés via Brandfetch et relayés par le serveur afin de ne jamais exposer le Client ID.
+- Les logos de grandes marques sont chargés directement depuis le CDN Brandfetch, conformément à leurs règles d’utilisation.
 
 ## Product
 

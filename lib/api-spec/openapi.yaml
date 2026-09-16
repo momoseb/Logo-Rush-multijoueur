@@ -61,25 +61,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Logo"
-  /game/logos/{logoId}/image:
-    get:
-      operationId: getLogoImage
-      tags: [game]
-      summary: Proxies an official logo from Brandfetch
-      parameters:
-        - name: logoId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Logo image
-          content:
-            image/png:
-              schema:
-                type: string
-                format: binary
 components:
   schemas:
     HealthStatus:

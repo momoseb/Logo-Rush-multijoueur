@@ -32,7 +32,10 @@ export function PixelatedLogo({ src, progress, reveal = false, alt = 'Marque à 
       context.imageSmoothingEnabled = false;
       context.drawImage(buffer, 0, 0, resolution, resolution, 0, 0, size, size);
     };
-    image.src = src;
+    const clientId = import.meta.env.VITE_BRANDFETCH_CLIENT_ID;
+    image.src = src.startsWith('brandfetch://')
+      ? `https://cdn.brandfetch.io/domain/${encodeURIComponent(src.slice('brandfetch://'.length))}/w/512/h/512/fallback/lettermark?c=${encodeURIComponent(clientId || '')}`
+      : src;
   }, [src, progress, reveal]);
 
   return <canvas ref={canvasRef} role="img" aria-label={alt} className="h-full w-full max-h-[32rem] max-w-[32rem] object-contain" />;

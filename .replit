@@ -21,3 +21,8 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+VITE_BRANDFETCH_CLIENT_ID = "1idke8AlkDn4BHhX1fs"

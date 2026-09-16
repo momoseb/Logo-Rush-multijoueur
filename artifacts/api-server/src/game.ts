@@ -41,22 +41,22 @@ type Room = {
 };
 
 export const logos: Logo[] = [
-  { id: "apple", domain: "apple.com", answer: "Apple", aliases: ["apple inc"], category: "technologie", difficulty: "easy", imageUrl: "/api/game/logos/apple/image" },
-  { id: "nike", domain: "nike.com", answer: "Nike", aliases: ["nike inc"], category: "sport", difficulty: "easy", imageUrl: "/api/game/logos/nike/image" },
-  { id: "cocacola", domain: "coca-cola.com", answer: "Coca-Cola", aliases: ["coca cola", "cocacola", "coke"], category: "alimentation", difficulty: "easy", imageUrl: "/api/game/logos/cocacola/image" },
-  { id: "mcdonalds", domain: "mcdonalds.com", answer: "McDonald's", aliases: ["mcdonalds", "macdonalds", "mcdo"], category: "alimentation", difficulty: "easy", imageUrl: "/api/game/logos/mcdonalds/image" },
-  { id: "adidas", domain: "adidas.com", answer: "Adidas", aliases: [], category: "sport", difficulty: "easy", imageUrl: "/api/game/logos/adidas/image" },
-  { id: "tesla", domain: "tesla.com", answer: "Tesla", aliases: ["tesla motors"], category: "automobile", difficulty: "easy", imageUrl: "/api/game/logos/tesla/image" },
-  { id: "spotify", domain: "spotify.com", answer: "Spotify", aliases: [], category: "technologie", difficulty: "easy", imageUrl: "/api/game/logos/spotify/image" },
-  { id: "netflix", domain: "netflix.com", answer: "Netflix", aliases: [], category: "cinéma", difficulty: "easy", imageUrl: "/api/game/logos/netflix/image" },
-  { id: "amazon", domain: "amazon.com", answer: "Amazon", aliases: ["amazon.com"], category: "technologie", difficulty: "medium", imageUrl: "/api/game/logos/amazon/image" },
-  { id: "microsoft", domain: "microsoft.com", answer: "Microsoft", aliases: ["microsoft corporation"], category: "technologie", difficulty: "easy", imageUrl: "/api/game/logos/microsoft/image" },
-  { id: "google", domain: "google.com", answer: "Google", aliases: [], category: "technologie", difficulty: "easy", imageUrl: "/api/game/logos/google/image" },
-  { id: "samsung", domain: "samsung.com", answer: "Samsung", aliases: ["samsung electronics"], category: "technologie", difficulty: "medium", imageUrl: "/api/game/logos/samsung/image" },
-  { id: "lego", domain: "lego.com", answer: "LEGO", aliases: ["the lego group"], category: "jeux vidéo", difficulty: "easy", imageUrl: "/api/game/logos/lego/image" },
-  { id: "pepsi", domain: "pepsi.com", answer: "Pepsi", aliases: ["pepsi cola"], category: "alimentation", difficulty: "medium", imageUrl: "/api/game/logos/pepsi/image" },
-  { id: "starbucks", domain: "starbucks.com", answer: "Starbucks", aliases: ["starbucks coffee"], category: "alimentation", difficulty: "medium", imageUrl: "/api/game/logos/starbucks/image" },
-  { id: "ferrari", domain: "ferrari.com", answer: "Ferrari", aliases: ["scuderia ferrari"], category: "automobile", difficulty: "medium", imageUrl: "/api/game/logos/ferrari/image" },
+  { id: "apple", domain: "apple.com", answer: "Apple", aliases: ["apple inc"], category: "technologie", difficulty: "easy", imageUrl: "brandfetch://apple.com" },
+  { id: "nike", domain: "nike.com", answer: "Nike", aliases: ["nike inc"], category: "sport", difficulty: "easy", imageUrl: "brandfetch://nike.com" },
+  { id: "cocacola", domain: "coca-cola.com", answer: "Coca-Cola", aliases: ["coca cola", "cocacola", "coke"], category: "alimentation", difficulty: "easy", imageUrl: "brandfetch://coca-cola.com" },
+  { id: "mcdonalds", domain: "mcdonalds.com", answer: "McDonald's", aliases: ["mcdonalds", "macdonalds", "mcdo"], category: "alimentation", difficulty: "easy", imageUrl: "brandfetch://mcdonalds.com" },
+  { id: "adidas", domain: "adidas.com", answer: "Adidas", aliases: [], category: "sport", difficulty: "easy", imageUrl: "brandfetch://adidas.com" },
+  { id: "tesla", domain: "tesla.com", answer: "Tesla", aliases: ["tesla motors"], category: "automobile", difficulty: "easy", imageUrl: "brandfetch://tesla.com" },
+  { id: "spotify", domain: "spotify.com", answer: "Spotify", aliases: [], category: "technologie", difficulty: "easy", imageUrl: "brandfetch://spotify.com" },
+  { id: "netflix", domain: "netflix.com", answer: "Netflix", aliases: [], category: "cinéma", difficulty: "easy", imageUrl: "brandfetch://netflix.com" },
+  { id: "amazon", domain: "amazon.com", answer: "Amazon", aliases: ["amazon.com"], category: "technologie", difficulty: "medium", imageUrl: "brandfetch://amazon.com" },
+  { id: "microsoft", domain: "microsoft.com", answer: "Microsoft", aliases: ["microsoft corporation"], category: "technologie", difficulty: "easy", imageUrl: "brandfetch://microsoft.com" },
+  { id: "google", domain: "google.com", answer: "Google", aliases: [], category: "technologie", difficulty: "easy", imageUrl: "brandfetch://google.com" },
+  { id: "samsung", domain: "samsung.com", answer: "Samsung", aliases: ["samsung electronics"], category: "technologie", difficulty: "medium", imageUrl: "brandfetch://samsung.com" },
+  { id: "lego", domain: "lego.com", answer: "LEGO", aliases: ["the lego group"], category: "jeux vidéo", difficulty: "easy", imageUrl: "brandfetch://lego.com" },
+  { id: "pepsi", domain: "pepsi.com", answer: "Pepsi", aliases: ["pepsi cola"], category: "alimentation", difficulty: "medium", imageUrl: "brandfetch://pepsi.com" },
+  { id: "starbucks", domain: "starbucks.com", answer: "Starbucks", aliases: ["starbucks coffee"], category: "alimentation", difficulty: "medium", imageUrl: "brandfetch://starbucks.com" },
+  { id: "ferrari", domain: "ferrari.com", answer: "Ferrari", aliases: ["scuderia ferrari"], category: "automobile", difficulty: "medium", imageUrl: "brandfetch://ferrari.com" },
 ];
 
 const rooms = new Map<string, Room>();

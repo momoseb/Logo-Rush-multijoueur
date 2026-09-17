@@ -40,6 +40,7 @@ export default function Room() {
   const [roundAnswer, setRoundAnswer] = useState('');
   
   const timerRef = useRef<number | null>(null);
+  const guessInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     ensureSessionId();
@@ -147,6 +148,11 @@ export default function Room() {
       socket.off('error', handleError);
     };
   }, [code, nickname, sessionId, setLocation, ensureSessionId]);
+
+  useEffect(() => {
+    if (gameState !== 'playing' || guessState === 'correct') return;
+    requestAnimationFrame(() => guessInputRef.current?.focus());
+  }, [gameState, roundNumber, guessState]);
 
   const handleStartGame = () => {
     getSocket().emit('game:start', { code });
@@ -339,6 +345,8 @@ export default function Room() {
           {/* Input Area */}
           <form onSubmit={handleGuessSubmit} className="relative">
             <Input
+              ref={guessInputRef}
+              autoFocus
               value={guess}
               onChange={(e) => setGuess(e.target.value)}
               disabled={gameState !== 'playing' || guessState === 'correct'}

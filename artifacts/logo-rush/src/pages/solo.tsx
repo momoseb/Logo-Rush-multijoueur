@@ -34,6 +34,7 @@ export default function Solo() {
   
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
+  const guessInputRef = useRef<HTMLInputElement>(null);
 
   // Pick 5 random logos for the session
   const gameLogos = useMemo(() => {
@@ -111,6 +112,11 @@ export default function Solo() {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (gameState !== 'playing') return;
+    requestAnimationFrame(() => guessInputRef.current?.focus());
+  }, [gameState, currentRound]);
 
   if (isLoading) {
     return (
@@ -234,6 +240,7 @@ export default function Solo() {
 
       <form onSubmit={handleGuessSubmit} className="w-full flex gap-4 relative z-0">
         <Input 
+          ref={guessInputRef}
           autoFocus
           value={guess}
           onChange={(e) => setGuess(e.target.value)}

@@ -1,0 +1,1 @@
+- [Brandfetch Logo API usage](brandfetch-logo-api.md) — load logos directly in browsers; server proxy requests can be rejected even with a valid Client ID.

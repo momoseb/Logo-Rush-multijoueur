@@ -72,6 +72,7 @@ export default function Room() {
       }
       if (data.status === 'waiting') setGameState('waiting');
       if (data.roundCount) setTotalRounds(data.roundCount);
+      if (data.roundDuration) setRoundDuration(data.roundDuration);
     };
 
     const handleGameStart = () => {
@@ -158,6 +159,16 @@ export default function Room() {
     getSocket().emit('game:start', { code });
   };
 
+  const updateRoomSettings = (nextRoundCount: number, nextRoundDuration: number) => {
+    getSocket().emit(
+      'room:settings',
+      { code, roundCount: nextRoundCount, roundDuration: nextRoundDuration },
+      (result: { ok: boolean; error?: string }) => {
+        if (!result.ok) toast({ variant: 'destructive', description: result.error });
+      },
+    );
+  };
+
   const handleGuessSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!guess.trim() || guessState === 'correct') return;
@@ -229,7 +240,39 @@ export default function Room() {
                 <>
                   <Play className="h-12 w-12 text-primary mb-4" />
                   <h3 className="font-bold text-lg mb-2">Prêt ?</h3>
-                  <p className="text-sm text-muted-foreground mb-6">Lancez la partie quand tout le monde est là.</p>
+                  <p className="text-sm text-muted-foreground mb-4">Réglez la partie puis lancez-la.</p>
+                  <div className="w-full mb-4">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Manches</p>
+                    <div className="grid grid-cols-4 gap-1">
+                      {[5, 10, 15, 20].map((value) => (
+                        <Button
+                          key={value}
+                          type="button"
+                          size="sm"
+                          variant={totalRounds === value ? 'default' : 'outline'}
+                          onClick={() => updateRoomSettings(value, roundDuration)}
+                        >
+                          {value}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="w-full mb-6">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Temps par manche</p>
+                    <div className="grid grid-cols-3 gap-1">
+                      {[15, 20, 30].map((value) => (
+                        <Button
+                          key={value}
+                          type="button"
+                          size="sm"
+                          variant={roundDuration === value ? 'secondary' : 'outline'}
+                          onClick={() => updateRoomSettings(totalRounds, value)}
+                        >
+                          {value} s
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
                   <Button size="lg" className="w-full text-lg h-14" onClick={handleStartGame} disabled={players.length < 1}>
                     Démarrer
                   </Button>

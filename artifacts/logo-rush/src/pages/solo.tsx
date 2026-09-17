@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { useListSoloLogos } from '@workspace/api-client-react';
 import type { Logo } from '@workspace/api-client-react';
@@ -26,6 +26,7 @@ export default function Solo() {
   const [score, setScore] = useState(0);
   const [roundCount, setRoundCount] = useState(5);
   const [roundDuration, setRoundDuration] = useState(20);
+  const [gameLogos, setGameLogos] = useState<Logo[]>([]);
   
   // Round state
   const [timeLeft, setTimeLeft] = useState(roundDuration);
@@ -36,16 +37,14 @@ export default function Solo() {
   const startTimeRef = useRef<number>(0);
   const guessInputRef = useRef<HTMLInputElement>(null);
 
-  // Pick 5 random logos for the session
-  const gameLogos = useMemo(() => {
-    if (!logos) return [];
-    const shuffled = [...logos].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, Math.min(roundCount, shuffled.length));
-  }, [logos, roundCount]);
-
   const currentLogo = gameLogos[currentRound];
 
   const startGame = () => {
+    if (!logos?.length) return;
+    const selectedLogos = [...logos]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, Math.min(roundCount, logos.length));
+    setGameLogos(selectedLogos);
     setScore(0);
     setCurrentRound(0);
     startRound();
@@ -150,7 +149,7 @@ export default function Solo() {
             </div>
           </div>
         </Card>
-        <Button size="lg" className="h-16 px-12 text-2xl" onClick={startGame}>
+        <Button size="lg" className="h-16 px-12 text-2xl" onClick={startGame} disabled={!logos?.length}>
           Démarrer
         </Button>
       </div>

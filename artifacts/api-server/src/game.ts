@@ -227,6 +227,20 @@ export function attachGameServer(io: Server) {
       broadcastRooms();
     });
 
+    socket.on("room:settings", (input, callback) => {
+      const room = findRoomForSocket(socket);
+      const player = room?.players.find((p) => p.socketId === socket.id);
+      if (!room || player?.id !== room.hostId || room.status !== "waiting") {
+        return callback?.({ ok: false, error: "Seul l'hôte peut modifier les réglages avant la partie." });
+      }
+      room.roundCount = Math.min(20, Math.max(1, Number(input?.roundCount) || room.roundCount));
+      room.roundDuration = Math.min(30, Math.max(10, Number(input?.roundDuration) || room.roundDuration));
+      room.lastActiveAt = Date.now();
+      io.to(room.code).emit("room:update", roomView(room));
+      broadcastRooms();
+      callback?.({ ok: true });
+    });
+
     socket.on("guess:submit", (input, callback) => {
       const room = findRoomForSocket(socket);
       const player = room?.players.find((p) => p.socketId === socket.id);

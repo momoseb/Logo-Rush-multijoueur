@@ -19,6 +19,8 @@ export default function Multiplayer() {
   
   const [joinCode, setJoinCode] = useState('');
   const [newRoomName, setNewRoomName] = useState('');
+  const [newRoomRoundCount, setNewRoomRoundCount] = useState(5);
+  const [newRoomRoundDuration, setNewRoomRoundDuration] = useState(20);
   const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
@@ -40,8 +42,8 @@ export default function Multiplayer() {
       sessionId,
       isPublic: true,
       maxPlayers: 10,
-      roundCount: 5,
-      roundDuration: 15
+      roundCount: newRoomRoundCount,
+      roundDuration: newRoomRoundDuration
     }, (result: { ok: boolean; room?: { code: string }; error?: string }) => {
       setIsCreating(false);
       if (result.ok && result.room) setLocation(`/room/${result.room.code}`);
@@ -158,6 +160,36 @@ export default function Multiplayer() {
                       className="h-12"
                       data-testid="input-room-name"
                     />
+                  </div>
+                  <div>
+                    <p className="mb-2 text-sm font-medium">Nombre de manches</p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[5, 10, 15, 20].map((value) => (
+                        <Button
+                          key={value}
+                          type="button"
+                          variant={newRoomRoundCount === value ? 'default' : 'outline'}
+                          onClick={() => setNewRoomRoundCount(value)}
+                        >
+                          {value}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-sm font-medium">Durée d'une manche</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[15, 20, 30].map((value) => (
+                        <Button
+                          key={value}
+                          type="button"
+                          variant={newRoomRoundDuration === value ? 'secondary' : 'outline'}
+                          onClick={() => setNewRoomRoundDuration(value)}
+                        >
+                          {value} s
+                        </Button>
+                      ))}
+                    </div>
                   </div>
                   <Button type="submit" disabled={!newRoomName.trim() || isCreating} className="w-full h-12" variant="secondary">
                     {isCreating ? 'Création...' : 'Créer le salon'}

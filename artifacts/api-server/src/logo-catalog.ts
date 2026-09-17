@@ -10,6 +10,12 @@ type CatalogLogo = {
 
 type BrandSeed = readonly [domain: string, answer: string, aliases?: readonly string[]];
 
+export const logoDomainCorrections: Readonly<Record<string, string>> = {
+  "burgerking.com": "burgerking.fr",
+};
+
+export const correctedLogoDomain = (domain: string) => logoDomainCorrections[domain] ?? domain;
+
 const brandSeeds: BrandSeed[] = [
   ["abercrombie.com", "Abercrombie & Fitch", ["abercrombie"]],
   ["accenture.com", "Accenture"],
@@ -371,13 +377,16 @@ const idFromDomain = (domain: string) =>
   domain.replace(/^www\./, "").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "");
 
 export const additionalLogos: CatalogLogo[] = brandSeeds.map(
-  ([domain, answer, aliases = []]) => ({
-    id: idFromDomain(domain),
-    domain,
-    answer,
-    aliases: [...aliases],
-    category: "marques",
-    difficulty: "medium",
-    imageUrl: `brandfetch://${domain}`,
-  }),
+  ([sourceDomain, answer, aliases = []]) => {
+    const domain = correctedLogoDomain(sourceDomain);
+    return {
+      id: idFromDomain(sourceDomain),
+      domain,
+      answer,
+      aliases: [...aliases],
+      category: "marques",
+      difficulty: "medium",
+      imageUrl: `brandfetch://${domain}`,
+    };
+  },
 );

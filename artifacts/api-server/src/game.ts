@@ -1,7 +1,7 @@
 import type { Server, Socket } from "socket.io";
 import { db, soloScoresTable } from "@workspace/db";
 import { logger } from "./lib/logger";
-import { additionalLogos } from "./logo-catalog";
+import { additionalLogos, correctedLogoDomain } from "./logo-catalog";
 
 export type Logo = {
   id: string;
@@ -87,7 +87,7 @@ export const logos: Logo[] = [
   { id: "xbox", domain: "xbox.com", answer: "Xbox", aliases: ["x box"], category: "jeux vidéo", difficulty: "easy", imageUrl: "brandfetch://xbox.com" },
   { id: "nintendo", domain: "nintendo.com", answer: "Nintendo", aliases: [], category: "jeux vidéo", difficulty: "easy", imageUrl: "brandfetch://nintendo.com" },
   { id: "kfc", domain: "kfc.com", answer: "KFC", aliases: ["kentucky fried chicken"], category: "alimentation", difficulty: "easy", imageUrl: "brandfetch://kfc.com" },
-  { id: "burgerking", domain: "burgerking.fr", answer: "Burger King", aliases: ["burgerking", "bk"], category: "alimentation", difficulty: "easy", imageUrl: "brandfetch://burgerking.fr" },
+  { id: "burgerking", domain: correctedLogoDomain("burgerking.com"), answer: "Burger King", aliases: ["burgerking", "bk"], category: "alimentation", difficulty: "easy", imageUrl: `brandfetch://${correctedLogoDomain("burgerking.com")}` },
   { id: "redbull", domain: "redbull.com", answer: "Red Bull", aliases: ["redbull"], category: "alimentation", difficulty: "easy", imageUrl: "brandfetch://redbull.com" },
   { id: "lacoste", domain: "lacoste.com", answer: "Lacoste", aliases: [], category: "mode", difficulty: "easy", imageUrl: "brandfetch://lacoste.com" },
   { id: "puma", domain: "puma.com", answer: "Puma", aliases: [], category: "sport", difficulty: "easy", imageUrl: "brandfetch://puma.com" },

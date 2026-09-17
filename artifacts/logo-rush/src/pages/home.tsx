@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
-import { Gamepad2, Users, Trophy, ChevronRight, Activity, Medal } from 'lucide-react';
+import { Gamepad2, Users, Trophy, ChevronRight, Activity, Medal, ShieldCheck } from 'lucide-react';
 
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -153,6 +153,10 @@ export default function Home() {
           <span>{statsLoading ? '...' : stats?.gamesInProgress || 0} parties en cours</span>
         </div>
       </div>
+      <Button variant="ghost" size="sm" onClick={() => setLocation('/logo-audit')} data-testid="button-open-logo-audit">
+        <ShieldCheck className="h-4 w-4" />
+        Contrôle des logos
+      </Button>
     </motion.div>
   );
 }

@@ -19,6 +19,7 @@ import Leaderboard from '@/pages/leaderboard';
 import NotFound from '@/pages/not-found';
 import { getSocket } from '@/lib/socket';
 import { useGameStore } from '@/store/useGameStore';
+import LogoAudit from '@/pages/logo-audit';
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ function Router() {
         <Route path="/solo" component={Solo} />
         <Route path="/multiplayer" component={Multiplayer} />
         <Route path="/leaderboard" component={Leaderboard} />
+        <Route path="/logo-audit" component={LogoAudit} />
         <Route path="/room/:code" component={Room} />
         <Route component={NotFound} />
       </Switch>

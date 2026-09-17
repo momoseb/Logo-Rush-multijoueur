@@ -61,6 +61,54 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Logo"
+  /game/solo-leaderboard:
+    get:
+      operationId: getSoloLeaderboard
+      tags: [game]
+      summary: Top five solo scores for one game mode
+      parameters:
+        - name: roundCount
+          in: query
+          required: true
+          schema:
+            type: integer
+            enum: [5, 10, 15, 20]
+        - name: roundDuration
+          in: query
+          required: true
+          schema:
+            type: integer
+            enum: [15, 20, 30]
+      responses:
+        "200":
+          description: Best scores for this mode
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 5
+                items:
+                  $ref: "#/components/schemas/SoloLeaderboardEntry"
+    post:
+      operationId: submitSoloScore
+      tags: [game]
+      summary: Save a completed solo game score
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SoloScoreInput"
+      responses:
+        "201":
+          description: Updated leaderboard for this mode
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 5
+                items:
+                  $ref: "#/components/schemas/SoloLeaderboardEntry"
 components:
   schemas:
     HealthStatus:
@@ -119,3 +167,38 @@ components:
           enum: [easy, medium, hard]
         imageUrl:
           type: string
+    SoloLeaderboardEntry:
+      type: object
+      required: [id, nickname, score, roundCount, roundDuration, createdAt]
+      properties:
+        id:
+          type: integer
+        nickname:
+          type: string
+        score:
+          type: integer
+        roundCount:
+          type: integer
+        roundDuration:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    SoloScoreInput:
+      type: object
+      required: [nickname, score, roundCount, roundDuration]
+      properties:
+        nickname:
+          type: string
+          minLength: 1
+          maxLength: 20
+        score:
+          type: integer
+          minimum: 0
+          maximum: 20000
+        roundCount:
+          type: integer
+          enum: [5, 10, 15, 20]
+        roundDuration:
+          type: integer
+          enum: [15, 20, 30]

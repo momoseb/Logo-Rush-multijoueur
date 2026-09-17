@@ -52,3 +52,70 @@ export interface Logo {
   imageUrl: string;
 }
 
+export interface SoloLeaderboardEntry {
+  id: number;
+  nickname: string;
+  score: number;
+  roundCount: number;
+  roundDuration: number;
+  createdAt: string;
+}
+
+export type SoloScoreInputRoundCount = typeof SoloScoreInputRoundCount[keyof typeof SoloScoreInputRoundCount];
+
+
+export const SoloScoreInputRoundCount = {
+  NUMBER_5: 5,
+  NUMBER_10: 10,
+  NUMBER_15: 15,
+  NUMBER_20: 20,
+} as const;
+
+export type SoloScoreInputRoundDuration = typeof SoloScoreInputRoundDuration[keyof typeof SoloScoreInputRoundDuration];
+
+
+export const SoloScoreInputRoundDuration = {
+  NUMBER_15: 15,
+  NUMBER_20: 20,
+  NUMBER_30: 30,
+} as const;
+
+export interface SoloScoreInput {
+  /**
+     * @minLength 1
+     * @maxLength 20
+     */
+  nickname: string;
+  /**
+     * @minimum 0
+     * @maximum 20000
+     */
+  score: number;
+  roundCount: SoloScoreInputRoundCount;
+  roundDuration: SoloScoreInputRoundDuration;
+}
+
+export type GetSoloLeaderboardParams = {
+roundCount: GetSoloLeaderboardRoundCount;
+roundDuration: GetSoloLeaderboardRoundDuration;
+};
+
+export type GetSoloLeaderboardRoundCount = typeof GetSoloLeaderboardRoundCount[keyof typeof GetSoloLeaderboardRoundCount];
+
+
+export const GetSoloLeaderboardRoundCount = {
+  NUMBER_5: 5,
+  NUMBER_10: 10,
+  NUMBER_15: 15,
+  NUMBER_20: 20,
+} as const;
+
+export type GetSoloLeaderboardRoundDuration = typeof GetSoloLeaderboardRoundDuration[keyof typeof GetSoloLeaderboardRoundDuration];
+
+
+export const GetSoloLeaderboardRoundDuration = {
+  NUMBER_15: 15,
+  NUMBER_20: 20,
+  NUMBER_30: 30,
+} as const;
+

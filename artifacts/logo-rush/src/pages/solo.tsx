@@ -1,17 +1,60 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
-import { useListSoloLogos } from '@workspace/api-client-react';
-import type { Logo } from '@workspace/api-client-react';
+import {
+  getGetSoloLeaderboardQueryKey,
+  useGetSoloLeaderboard,
+  useListSoloLogos,
+  useSubmitSoloScore,
+} from '@workspace/api-client-react';
+import type { Logo, SoloLeaderboardEntry } from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useGameStore } from '@/store/useGameStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle2, Medal, Trophy, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PixelatedLogo } from '@/components/pixelated-logo';
 
 type GameState = 'setup' | 'playing' | 'round_recap' | 'results';
+type RoundCount = 5 | 10 | 15 | 20;
+type RoundDuration = 15 | 20 | 30;
+
+function SoloLeaderboard({
+  entries,
+  isLoading,
+}: {
+  entries?: SoloLeaderboardEntry[];
+  isLoading: boolean;
+}) {
+  return (
+    <Card className="w-full p-5 bg-card/50 backdrop-blur-md border-primary/20">
+      <div className="mb-4 flex items-center gap-2">
+        <Trophy className="h-5 w-5 text-primary" />
+        <h2 className="text-xl font-bold">Top 5 de ce mode</h2>
+      </div>
+      {isLoading ? (
+        <p className="py-5 text-center text-muted-foreground">Chargement du classement...</p>
+      ) : !entries?.length ? (
+        <p className="py-5 text-center text-muted-foreground">Aucun score pour ce mode. Soyez le premier !</p>
+      ) : (
+        <div className="space-y-2">
+          {entries.map((entry, index) => (
+            <div key={entry.id} className="flex items-center gap-3 rounded-lg border border-border/50 bg-background/40 px-4 py-3">
+              <span className="flex w-7 items-center justify-center font-bold text-primary">
+                {index < 3 ? <Medal className="h-5 w-5" /> : index + 1}
+              </span>
+              <span className="flex-1 truncate font-semibold">{entry.nickname}</span>
+              <span className="font-mono text-lg font-bold">{entry.score}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
 
 function normalizeString(str: string) {
   return str.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -19,23 +62,35 @@ function normalizeString(str: string) {
 
 export default function Solo() {
   const [, setLocation] = useLocation();
+  const nickname = useGameStore((state) => state.nickname);
+  const queryClient = useQueryClient();
   const { data: logos, isLoading } = useListSoloLogos();
   
   const [gameState, setGameState] = useState<GameState>('setup');
   const [currentRound, setCurrentRound] = useState(0);
   const [score, setScore] = useState(0);
-  const [roundCount, setRoundCount] = useState(5);
-  const [roundDuration, setRoundDuration] = useState(20);
+  const [roundCount, setRoundCount] = useState<RoundCount>(5);
+  const [roundDuration, setRoundDuration] = useState<RoundDuration>(20);
   const [gameLogos, setGameLogos] = useState<Logo[]>([]);
   
   // Round state
-  const [timeLeft, setTimeLeft] = useState(roundDuration);
+  const [timeLeft, setTimeLeft] = useState<number>(roundDuration);
   const [guess, setGuess] = useState('');
   const [roundResult, setRoundResult] = useState<'won' | 'lost' | null>(null);
   
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const guessInputRef = useRef<HTMLInputElement>(null);
+  const submittedResultRef = useRef(false);
+  const leaderboardParams = { roundCount, roundDuration };
+  const { data: leaderboard, isLoading: isLeaderboardLoading } = useGetSoloLeaderboard(leaderboardParams);
+  const submitScore = useSubmitSoloScore({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetSoloLeaderboardQueryKey(leaderboardParams) });
+      },
+    },
+  });
 
   const currentLogo = gameLogos[currentRound];
 
@@ -45,6 +100,7 @@ export default function Solo() {
       .sort(() => Math.random() - 0.5)
       .slice(0, Math.min(roundCount, logos.length));
     setGameLogos(selectedLogos);
+    submittedResultRef.current = false;
     setScore(0);
     setCurrentRound(0);
     startRound();
@@ -117,6 +173,19 @@ export default function Solo() {
     requestAnimationFrame(() => guessInputRef.current?.focus());
   }, [gameState, currentRound]);
 
+  useEffect(() => {
+    if (gameState !== 'results' || submittedResultRef.current || !nickname) return;
+    submittedResultRef.current = true;
+    submitScore.mutate({
+      data: {
+        nickname,
+        score,
+        roundCount,
+        roundDuration,
+      },
+    });
+  }, [gameState, nickname, roundCount, roundDuration, score]);
+
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -127,7 +196,7 @@ export default function Solo() {
 
   if (gameState === 'setup') {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center space-y-8">
+      <div className="flex-1 flex flex-col items-center py-12 space-y-8">
         <Button variant="ghost" className="absolute top-4 left-4" onClick={() => setLocation('/')}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Retour
         </Button>
@@ -139,19 +208,22 @@ export default function Solo() {
           <div>
             <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Nombre de manches</p>
             <div className="grid grid-cols-4 gap-2">
-              {[5, 10, 15, 20].map(value => <Button key={value} variant={roundCount === value ? 'default' : 'outline'} onClick={() => setRoundCount(value)}>{value}</Button>)}
+              {([5, 10, 15, 20] as RoundCount[]).map(value => <Button key={value} variant={roundCount === value ? 'default' : 'outline'} onClick={() => setRoundCount(value)}>{value}</Button>)}
             </div>
           </div>
           <div>
             <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Durée d'une manche</p>
             <div className="grid grid-cols-3 gap-2">
-              {[15, 20, 30].map(value => <Button key={value} variant={roundDuration === value ? 'secondary' : 'outline'} onClick={() => setRoundDuration(value)}>{value} s</Button>)}
+              {([15, 20, 30] as RoundDuration[]).map(value => <Button key={value} variant={roundDuration === value ? 'secondary' : 'outline'} onClick={() => setRoundDuration(value)}>{value} s</Button>)}
             </div>
           </div>
         </Card>
         <Button size="lg" className="h-16 px-12 text-2xl" onClick={startGame} disabled={!logos?.length}>
           Démarrer
         </Button>
+        <div className="w-full max-w-xl">
+          <SoloLeaderboard entries={leaderboard} isLoading={isLeaderboardLoading} />
+        </div>
       </div>
     );
   }
@@ -171,6 +243,12 @@ export default function Solo() {
           <Button size="lg" onClick={startGame}>
             Rejouer
           </Button>
+        </div>
+        <div className="w-full max-w-xl">
+          <SoloLeaderboard
+            entries={submitScore.data ?? leaderboard}
+            isLoading={submitScore.isPending || isLeaderboardLoading}
+          />
         </div>
       </div>
     );

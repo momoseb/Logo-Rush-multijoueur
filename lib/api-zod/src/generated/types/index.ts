@@ -7,8 +7,15 @@
  */
 
 export * from './gameStats';
+export * from './getSoloLeaderboardParams';
+export * from './getSoloLeaderboardRoundCount';
+export * from './getSoloLeaderboardRoundDuration';
 export * from './healthStatus';
 export * from './logo';
 export * from './logoDifficulty';
 export * from './publicRoom';
 export * from './publicRoomStatus';
+export * from './soloLeaderboardEntry';
+export * from './soloScoreInput';
+export * from './soloScoreInputRoundCount';
+export * from './soloScoreInputRoundDuration';

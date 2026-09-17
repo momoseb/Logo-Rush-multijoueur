@@ -53,3 +53,50 @@ export const ListSoloLogosResponseItem = zod.object({
 export const ListSoloLogosResponse = zod.array(ListSoloLogosResponseItem)
 
 
+/**
+ * @summary Top five solo scores for one game mode
+ */
+export const GetSoloLeaderboardQueryParams = zod.object({
+  "roundCount": zod.union([zod.literal(5),zod.literal(10),zod.literal(15),zod.literal(20)]),
+  "roundDuration": zod.union([zod.literal(15),zod.literal(20),zod.literal(30)])
+})
+
+export const GetSoloLeaderboardResponseItem = zod.object({
+  "id": zod.number().int(),
+  "nickname": zod.string(),
+  "score": zod.number().int(),
+  "roundCount": zod.number().int(),
+  "roundDuration": zod.number().int(),
+  "createdAt": zod.coerce.date()
+})
+export const GetSoloLeaderboardResponse = zod.array(GetSoloLeaderboardResponseItem).max(5)
+
+
+/**
+ * @summary Save a completed solo game score
+ */
+export const submitSoloScoreBodyNicknameMax = 20;
+
+export const submitSoloScoreBodyScoreMin = 0;
+export const submitSoloScoreBodyScoreMax = 20000;
+
+
+
+export const SubmitSoloScoreBody = zod.object({
+  "nickname": zod.string().min(1).max(submitSoloScoreBodyNicknameMax),
+  "score": zod.number().int().min(submitSoloScoreBodyScoreMin).max(submitSoloScoreBodyScoreMax),
+  "roundCount": zod.union([zod.literal(5),zod.literal(10),zod.literal(15),zod.literal(20)]),
+  "roundDuration": zod.union([zod.literal(15),zod.literal(20),zod.literal(30)])
+})
+
+export const SubmitSoloScoreResponseItem = zod.object({
+  "id": zod.number().int(),
+  "nickname": zod.string(),
+  "score": zod.number().int(),
+  "roundCount": zod.number().int(),
+  "roundDuration": zod.number().int(),
+  "createdAt": zod.coerce.date()
+})
+export const SubmitSoloScoreResponse = zod.array(SubmitSoloScoreResponseItem).max(5)
+
+

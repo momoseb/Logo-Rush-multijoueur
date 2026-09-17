@@ -6,24 +6,31 @@
  * OpenAPI spec version: 0.1.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
 
 import type {
   GameStats,
+  GetSoloLeaderboardParams,
   HealthStatus,
   Logo,
-  PublicRoom
+  PublicRoom,
+  SoloLeaderboardEntry,
+  SoloScoreInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
-import type { ErrorType } from '../custom-fetch';
+import type { ErrorType , BodyType } from '../custom-fetch';
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -350,4 +357,176 @@ export function useListSoloLogos<TData = Awaited<ReturnType<typeof listSoloLogos
 
 
 
+
+export const getGetSoloLeaderboardUrl = (params: GetSoloLeaderboardParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/game/solo-leaderboard?${stringifiedParams}` : `/api/game/solo-leaderboard`
+}
+
+/**
+ * @summary Top five solo scores for one game mode
+ */
+export const getSoloLeaderboard = async (params: GetSoloLeaderboardParams, options?: Parameters<typeof customFetch>[1]): Promise<SoloLeaderboardEntry[]> => {
+
+  return customFetch<SoloLeaderboardEntry[]>(getGetSoloLeaderboardUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSoloLeaderboardQueryKey = (params?: GetSoloLeaderboardParams,) => {
+    return [
+    `/api/game/solo-leaderboard`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSoloLeaderboardQueryOptions = <TData = Awaited<ReturnType<typeof getSoloLeaderboard>>, TError = ErrorType<unknown>>(params: GetSoloLeaderboardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSoloLeaderboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSoloLeaderboardQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSoloLeaderboard>>> = ({ signal }) => getSoloLeaderboard(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSoloLeaderboard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSoloLeaderboardQueryResult = NonNullable<Awaited<ReturnType<typeof getSoloLeaderboard>>>
+export type GetSoloLeaderboardQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Top five solo scores for one game mode
+ */
+
+export function useGetSoloLeaderboard<TData = Awaited<ReturnType<typeof getSoloLeaderboard>>, TError = ErrorType<unknown>>(
+ params: GetSoloLeaderboardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSoloLeaderboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSoloLeaderboardQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSubmitSoloScoreUrl = () => {
+
+
+
+
+  return `/api/game/solo-leaderboard`
+}
+
+/**
+ * @summary Save a completed solo game score
+ */
+export const submitSoloScore = async (soloScoreInput: SoloScoreInput, options?: Parameters<typeof customFetch>[1]): Promise<SoloLeaderboardEntry[]> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SoloLeaderboardEntry[]>(getSubmitSoloScoreUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(soloScoreInput)
+  }
+);}
+
+
+
+
+
+export const getSubmitSoloScoreMutationKey = () => ['submitSoloScore'] as const;
+
+export const getSubmitSoloScoreMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSoloScore>>, TError,SubmitSoloScoreMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitSoloScore>>, TError,SubmitSoloScoreMutationVariables, TContext> => {
+
+const mutationKey = getSubmitSoloScoreMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitSoloScore>>, SubmitSoloScoreMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitSoloScore(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitSoloScoreMutationResult = NonNullable<Awaited<ReturnType<typeof submitSoloScore>>>
+    export type SubmitSoloScoreMutationBody = BodyType<SoloScoreInput>
+    export type SubmitSoloScoreMutationError = ErrorType<unknown>
+    export type SubmitSoloScoreMutationVariables = {data: BodyType<SoloScoreInput>}
+
+    /**
+ * @summary Save a completed solo game score
+ */
+export const useSubmitSoloScore = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSoloScore>>, TError,SubmitSoloScoreMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitSoloScore>>,
+        TError,
+        SubmitSoloScoreMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSubmitSoloScoreMutationOptions(options));
+    }
 

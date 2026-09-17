@@ -6,7 +6,7 @@ import {
   useListSoloLogos,
   useSubmitSoloScore,
 } from '@workspace/api-client-react';
-import type { Logo, SoloLeaderboardEntry } from '@workspace/api-client-react';
+import type { Logo } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useGameStore } from '@/store/useGameStore';
 import { Button } from '@/components/ui/button';
@@ -14,47 +14,14 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Clock, CheckCircle2, Medal, Trophy, XCircle } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PixelatedLogo } from '@/components/pixelated-logo';
+import { SoloLeaderboard } from '@/components/solo-leaderboard';
 
 type GameState = 'setup' | 'playing' | 'round_recap' | 'results';
 type RoundCount = 5 | 10 | 15 | 20;
 type RoundDuration = 15 | 20 | 30;
-
-function SoloLeaderboard({
-  entries,
-  isLoading,
-}: {
-  entries?: SoloLeaderboardEntry[];
-  isLoading: boolean;
-}) {
-  return (
-    <Card className="w-full p-5 bg-card/50 backdrop-blur-md border-primary/20">
-      <div className="mb-4 flex items-center gap-2">
-        <Trophy className="h-5 w-5 text-primary" />
-        <h2 className="text-xl font-bold">Top 5 de ce mode</h2>
-      </div>
-      {isLoading ? (
-        <p className="py-5 text-center text-muted-foreground">Chargement du classement...</p>
-      ) : !entries?.length ? (
-        <p className="py-5 text-center text-muted-foreground">Aucun score pour ce mode. Soyez le premier !</p>
-      ) : (
-        <div className="space-y-2">
-          {entries.map((entry, index) => (
-            <div key={entry.id} className="flex items-center gap-3 rounded-lg border border-border/50 bg-background/40 px-4 py-3">
-              <span className="flex w-7 items-center justify-center font-bold text-primary">
-                {index < 3 ? <Medal className="h-5 w-5" /> : index + 1}
-              </span>
-              <span className="flex-1 truncate font-semibold">{entry.nickname}</span>
-              <span className="font-mono text-lg font-bold">{entry.score}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </Card>
-  );
-}
 
 function normalizeString(str: string) {
   return str.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -172,6 +139,17 @@ export default function Solo() {
     if (gameState !== 'playing') return;
     requestAnimationFrame(() => guessInputRef.current?.focus());
   }, [gameState, currentRound]);
+
+  useEffect(() => {
+    if (gameState !== 'round_recap') return;
+    const handleNextRoundKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      nextRound();
+    };
+    window.addEventListener('keydown', handleNextRoundKey);
+    return () => window.removeEventListener('keydown', handleNextRoundKey);
+  }, [gameState, currentRound, gameLogos.length]);
 
   useEffect(() => {
     if (gameState !== 'results' || submittedResultRef.current || !nickname) return;
@@ -309,7 +287,8 @@ export default function Solo() {
               {roundResult === 'won' ? `Trouvé en ${(roundDuration - timeLeft).toFixed(1)}s` : 'Temps écoulé !'}
             </p>
             <Button size="lg" onClick={nextRound}>
-              Manche suivante <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
+              Manche suivante <span className="ml-2 text-xs opacity-70">Entrée ↵</span>
+              <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
             </Button>
           </motion.div>
         )}

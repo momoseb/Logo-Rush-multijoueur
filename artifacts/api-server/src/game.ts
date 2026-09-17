@@ -1,5 +1,7 @@
 import type { Server, Socket } from "socket.io";
+import { db, soloScoresTable } from "@workspace/db";
 import { logger } from "./lib/logger";
+import { additionalLogos } from "./logo-catalog";
 
 export type Logo = {
   id: string;
@@ -65,7 +67,7 @@ export const logos: Logo[] = [
   { id: "honda", domain: "honda.com", answer: "Honda", aliases: [], category: "automobile", difficulty: "medium", imageUrl: "brandfetch://honda.com" },
   { id: "ford", domain: "ford.com", answer: "Ford", aliases: ["ford motor company"], category: "automobile", difficulty: "easy", imageUrl: "brandfetch://ford.com" },
   { id: "porsche", domain: "porsche.com", answer: "Porsche", aliases: [], category: "automobile", difficulty: "medium", imageUrl: "brandfetch://porsche.com" },
-  { id: "renault", domain: "renault.com", answer: "Renault", aliases: [], category: "automobile", difficulty: "easy", imageUrl: "brandfetch://renault.com" },
+  { id: "renault", domain: "renault.co.uk", answer: "Renault", aliases: [], category: "automobile", difficulty: "easy", imageUrl: "brandfetch://renault.co.uk" },
   { id: "louisvuitton", domain: "louisvuitton.com", answer: "Louis Vuitton", aliases: ["louis vuitton", "lv"], category: "mode", difficulty: "easy", imageUrl: "brandfetch://louisvuitton.com" },
   { id: "chanel", domain: "chanel.com", answer: "Chanel", aliases: [], category: "mode", difficulty: "easy", imageUrl: "brandfetch://chanel.com" },
   { id: "gucci", domain: "gucci.com", answer: "Gucci", aliases: [], category: "mode", difficulty: "easy", imageUrl: "brandfetch://gucci.com" },
@@ -85,16 +87,19 @@ export const logos: Logo[] = [
   { id: "xbox", domain: "xbox.com", answer: "Xbox", aliases: ["x box"], category: "jeux vidéo", difficulty: "easy", imageUrl: "brandfetch://xbox.com" },
   { id: "nintendo", domain: "nintendo.com", answer: "Nintendo", aliases: [], category: "jeux vidéo", difficulty: "easy", imageUrl: "brandfetch://nintendo.com" },
   { id: "kfc", domain: "kfc.com", answer: "KFC", aliases: ["kentucky fried chicken"], category: "alimentation", difficulty: "easy", imageUrl: "brandfetch://kfc.com" },
-  { id: "burgerking", domain: "burgerking.com", answer: "Burger King", aliases: ["burgerking", "bk"], category: "alimentation", difficulty: "easy", imageUrl: "brandfetch://burgerking.com" },
+  { id: "burgerking", domain: "burgerking.fr", answer: "Burger King", aliases: ["burgerking", "bk"], category: "alimentation", difficulty: "easy", imageUrl: "brandfetch://burgerking.fr" },
   { id: "redbull", domain: "redbull.com", answer: "Red Bull", aliases: ["redbull"], category: "alimentation", difficulty: "easy", imageUrl: "brandfetch://redbull.com" },
   { id: "lacoste", domain: "lacoste.com", answer: "Lacoste", aliases: [], category: "mode", difficulty: "easy", imageUrl: "brandfetch://lacoste.com" },
   { id: "puma", domain: "puma.com", answer: "Puma", aliases: [], category: "sport", difficulty: "easy", imageUrl: "brandfetch://puma.com" },
   { id: "shell", domain: "shell.com", answer: "Shell", aliases: ["royal dutch shell"], category: "énergie", difficulty: "medium", imageUrl: "brandfetch://shell.com" },
   { id: "rolex", domain: "rolex.com", answer: "Rolex", aliases: [], category: "mode", difficulty: "medium", imageUrl: "brandfetch://rolex.com" },
+  ...additionalLogos,
 ];
 
 const rooms = new Map<string, Room>();
 let ioRef: Server | undefined;
+const leaderboardRoundCounts = new Set([5, 10, 15, 20]);
+const leaderboardRoundDurations = new Set([15, 20, 30]);
 
 const clean = (value: string) => value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f'’\s._-]/g, "");
 const randomCode = () => Math.random().toString(36).slice(2, 7).toUpperCase();
@@ -117,7 +122,13 @@ const roomView = (room: Room) => ({
 });
 
 export const getStats = () => ({
-  playersOnline: ioRef?.engine.clientsCount ?? 0,
+  playersOnline: ioRef
+    ? new Set(
+        [...ioRef.sockets.sockets.values()].map((socket) =>
+          String(socket.data.sessionId || socket.id),
+        ),
+      ).size
+    : 0,
   publicRooms: [...rooms.values()].filter((r) => r.isPublic && r.status === "waiting").length,
   gamesInProgress: [...rooms.values()].filter((r) => r.status === "playing").length,
 });
@@ -126,6 +137,22 @@ export const getPublicRooms = () => [...rooms.values()].filter((r) => r.isPublic
 function broadcastRooms() {
   ioRef?.emit("rooms:update", getPublicRooms());
   ioRef?.emit("stats:update", getStats());
+}
+
+async function saveMultiplayerScores(room: Room) {
+  if (!leaderboardRoundCounts.has(room.roundCount) || !leaderboardRoundDurations.has(room.roundDuration)) return;
+  try {
+    await db.insert(soloScoresTable).values(
+      room.players.map((player) => ({
+        nickname: player.nickname,
+        score: player.score,
+        roundCount: room.roundCount,
+        roundDuration: room.roundDuration,
+      })),
+    );
+  } catch (error) {
+    logger.error({ error, roomCode: room.code }, "Unable to save multiplayer leaderboard scores");
+  }
 }
 
 function finishRound(room: Room) {
@@ -137,9 +164,10 @@ function finishRound(room: Room) {
     imageUrl: logo.imageUrl,
     players: room.players.map((p) => ({ id: p.id, nickname: p.nickname, score: p.score, foundAt: p.foundAt, roundPoints: p.roundPoints })).sort((a, b) => (b.roundPoints - a.roundPoints)),
   });
-  room.nextTimer = setTimeout(() => {
+  room.nextTimer = setTimeout(async () => {
     if (room.roundIndex + 1 >= room.roundCount) {
       room.status = "results";
+      await saveMultiplayerScores(room);
       ioRef?.to(room.code).emit("game:end", roomView(room));
       return;
     }
@@ -171,6 +199,12 @@ export function attachGameServer(io: Server) {
   ioRef = io;
   io.on("connection", (socket) => {
     broadcastRooms();
+    socket.on("presence:identify", (input) => {
+      const sessionId = String(input?.sessionId || "").slice(0, 100);
+      if (!sessionId) return;
+      socket.data.sessionId = sessionId;
+      broadcastRooms();
+    });
     socket.on("room:create", (input, callback) => {
       const code = randomCode();
       const playerId = crypto.randomUUID();
@@ -189,6 +223,7 @@ export function attachGameServer(io: Server) {
         lastActiveAt: Date.now(),
       };
       rooms.set(code, room);
+      socket.data.sessionId = room.players[0]?.sessionId;
       socket.join(code);
       callback?.({ ok: true, room: roomView(room), playerId });
       io.to(code).emit("room:update", roomView(room));
@@ -207,6 +242,7 @@ export function attachGameServer(io: Server) {
         player = { id: crypto.randomUUID(), sessionId, socketId: socket.id, nickname: String(input?.nickname || "Joueur").slice(0, 20), score: 0, roundPoints: 0, connected: true };
         room.players.push(player);
       }
+      socket.data.sessionId = sessionId;
       socket.join(code);
       room.lastActiveAt = Date.now();
       callback?.({ ok: true, room: roomView(room), playerId: player.id });

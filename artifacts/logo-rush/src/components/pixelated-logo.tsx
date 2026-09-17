@@ -34,7 +34,7 @@ export function PixelatedLogo({ src, progress, reveal = false, alt = 'Marque à 
     };
     const clientId = import.meta.env.VITE_BRANDFETCH_CLIENT_ID;
     image.src = src.startsWith('brandfetch://')
-      ? `https://cdn.brandfetch.io/domain/${encodeURIComponent(src.slice('brandfetch://'.length))}/w/512/h/512/fallback/lettermark?c=${encodeURIComponent(clientId || '')}`
+      ? `https://cdn.brandfetch.io/domain/${encodeURIComponent(src.slice('brandfetch://'.length))}/w/512/h/512/type/icon/fallback/lettermark?c=${encodeURIComponent(clientId || '')}`
       : src;
   }, [src, progress, reveal]);
 

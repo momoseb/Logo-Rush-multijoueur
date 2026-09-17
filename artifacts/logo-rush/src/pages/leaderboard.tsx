@@ -1,0 +1,69 @@
+import { useState } from 'react';
+import { useLocation } from 'wouter';
+import { useGetSoloLeaderboard } from '@workspace/api-client-react';
+import { ArrowLeft, Trophy } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { SoloLeaderboard } from '@/components/solo-leaderboard';
+
+type RoundCount = 5 | 10 | 15 | 20;
+type RoundDuration = 15 | 20 | 30;
+
+export default function Leaderboard() {
+  const [, setLocation] = useLocation();
+  const [roundCount, setRoundCount] = useState<RoundCount>(5);
+  const [roundDuration, setRoundDuration] = useState<RoundDuration>(20);
+  const { data, isLoading } = useGetSoloLeaderboard({ roundCount, roundDuration });
+
+  return (
+    <div className="flex-1 w-full max-w-3xl mx-auto py-8 space-y-8">
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" onClick={() => setLocation('/')}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+        </Button>
+        <div className="flex items-center gap-3">
+          <Trophy className="h-8 w-8 text-primary" />
+          <h1 className="text-3xl sm:text-4xl font-bold">Leaderboard</h1>
+        </div>
+        <div className="w-24" />
+      </div>
+
+      <Card className="space-y-6 p-6 bg-card/50 backdrop-blur-md">
+        <div>
+          <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Nombre de manches</p>
+          <div className="grid grid-cols-4 gap-2">
+            {([5, 10, 15, 20] as RoundCount[]).map((value) => (
+              <Button
+                key={value}
+                variant={roundCount === value ? 'default' : 'outline'}
+                onClick={() => setRoundCount(value)}
+              >
+                {value}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Durée d'une manche</p>
+          <div className="grid grid-cols-3 gap-2">
+            {([15, 20, 30] as RoundDuration[]).map((value) => (
+              <Button
+                key={value}
+                variant={roundDuration === value ? 'secondary' : 'outline'}
+                onClick={() => setRoundDuration(value)}
+              >
+                {value} s
+              </Button>
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      <SoloLeaderboard
+        entries={data}
+        isLoading={isLoading}
+        title={`Top 5 · ${roundCount} manches · ${roundDuration} s`}
+      />
+    </div>
+  );
+}

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
-import { Gamepad2, Users, Trophy, ChevronRight, Activity } from 'lucide-react';
+import { Gamepad2, Users, Trophy, ChevronRight, Activity, Medal } from 'lucide-react';
 
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -119,8 +119,28 @@ export default function Home() {
               </CardContent>
             </Card>
           </motion.div>
+
         </div>
       )}
+
+      <motion.div className="w-full max-w-3xl" whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+        <Card
+          className="cursor-pointer hover:border-accent/50 transition-colors bg-card/40 backdrop-blur-md group"
+          onClick={() => setLocation('/leaderboard')}
+          data-testid="card-leaderboard"
+        >
+          <CardContent className="p-6 flex flex-col sm:flex-row items-center text-center sm:text-left gap-5">
+            <div className="h-14 w-14 shrink-0 rounded-full bg-accent/20 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-accent-foreground transition-colors">
+              <Medal className="h-7 w-7" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-2xl font-bold">Leaderboard</h3>
+              <p className="text-muted-foreground">Consultez les meilleurs scores des parties solo et multijoueur.</p>
+            </div>
+            <ChevronRight className="h-6 w-6 text-muted-foreground group-hover:text-accent transition-colors" />
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Live Stats */}
       <div className="flex gap-4 sm:gap-8 opacity-80 mt-12">

@@ -1,9 +1,9 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { useHealthCheck, getHealthCheckQueryKey } from '@workspace/api-client-react';
+import { useHealthCheck, getHealthCheckQueryKey, getGetGameStatsQueryKey } from '@workspace/api-client-react';
 import {
   Route,
   Switch,
@@ -15,7 +15,10 @@ import Home from '@/pages/home';
 import Solo from '@/pages/solo';
 import Multiplayer from '@/pages/multiplayer';
 import Room from '@/pages/room';
+import Leaderboard from '@/pages/leaderboard';
 import NotFound from '@/pages/not-found';
+import { getSocket } from '@/lib/socket';
+import { useGameStore } from '@/store/useGameStore';
 
 const queryClient = new QueryClient();
 
@@ -26,6 +29,7 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/solo" component={Solo} />
         <Route path="/multiplayer" component={Multiplayer} />
+        <Route path="/leaderboard" component={Leaderboard} />
         <Route path="/room/:code" component={Room} />
         <Route component={NotFound} />
       </Switch>
@@ -58,11 +62,35 @@ function ServerStatus() {
   );
 }
 
+function OnlinePresence() {
+  const sessionId = useGameStore((state) => state.sessionId);
+
+  useEffect(() => {
+    const socket = getSocket();
+    const identify = () => socket.emit('presence:identify', { sessionId });
+    const updateStats = (stats: { playersOnline: number; publicRooms: number; gamesInProgress: number }) => {
+      queryClient.setQueryData(getGetGameStatsQueryKey(), stats);
+    };
+
+    if (socket.connected) identify();
+    socket.on('connect', identify);
+    socket.on('stats:update', updateStats);
+
+    return () => {
+      socket.off('connect', identify);
+      socket.off('stats:update', updateStats);
+    };
+  }, [sessionId]);
+
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL?.replace(/\/$/, '')}>
+          <OnlinePresence />
           <main className="min-h-[100dvh] flex flex-col items-center p-4 sm:p-8">
             <div className="w-full max-w-5xl mx-auto flex-1 flex flex-col relative">
               {/* Animated decorative elements could go here */}

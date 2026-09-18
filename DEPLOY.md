@@ -20,7 +20,10 @@ ou manuellement :
 
 - **Runtime** : Node
 - **Build command** :
-  `corepack enable && pnpm install --frozen-lockfile && pnpm --filter @workspace/db run push && pnpm --filter @workspace/api-server run build`
+  `pnpm install --frozen-lockfile && pnpm --filter @workspace/db run push && pnpm --filter @workspace/api-server run build`
+  (pas de `corepack enable` : l'image de build Render fournit déjà pnpm
+  via son propre binaire en lecture seule — `corepack enable` essaie de
+  le remplacer et plante avec `EROFS`)
   — le `pnpm --filter @workspace/db run push` resynchronise le schéma à
   chaque déploiement, ce qui évite le bug de leaderboard "cassé après un
   changement de schéma" documenté dans l'issue GitHub #2.

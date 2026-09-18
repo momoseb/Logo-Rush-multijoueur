@@ -2,7 +2,8 @@
 
 Guide for coding agents working in this repo. `replit.md` is Replit's own
 agent-memory file (kept for the Replit Agent); this file is the fuller,
-engineering-facing companion — read it first.
+engineering-facing companion — read it first. See `DEPLOY.md` for the
+production topology (Vercel frontend + Render backend).
 
 ## What this is
 
@@ -12,23 +13,25 @@ workspace, two runtime services (`artifacts/logo-rush` React frontend,
 `artifacts/api-server` Express + Socket.IO backend), shared libs under
 `lib/`. See `replit.md` for the stack/run-command summary.
 
-## Running it locally (outside Replit)
+Production deploys the frontend and backend as two **separate origins**
+(Vercel + Render) — not something Replit's router stitches together
+anymore. `VITE_API_BASE_URL` (frontend) is what makes this work: unset,
+everything assumes same-origin (still true for local dev via the vite
+proxy, or if you ever put a router back in front of both); set, every
+`/api` call and the Socket.IO connection target that URL explicitly. See
+`artifacts/logo-rush/src/main.tsx` and `src/lib/socket.ts`.
 
-Replit's own deployment router stitches the frontend (`/`) and API
-(`/api`, `/socket.io`) onto one origin — see
-`artifacts/*/.replit-artifact/artifact.toml` for the exact path→port
-mapping. Outside Replit that router doesn't exist, so:
+## Running it locally / deploying
 
-1. Postgres reachable via `DATABASE_URL`, then `pnpm --filter db run push`
-   to sync the schema (there is no migrations folder — this project uses
-   `drizzle-kit push`, not versioned migrations).
-2. `DATABASE_URL=... PORT=5000 pnpm --filter @workspace/api-server run dev`
-3. `artifacts/logo-rush/vite.config.ts` has a `server.proxy` for `/api`
-   and `/socket.io` → `http://127.0.0.1:5000` (dev-server only, harmless
-   in production builds) so `PORT=5173 BASE_PATH=/ VITE_BRANDFETCH_CLIENT_ID=... pnpm --filter @workspace/logo-rush run dev`
-   works standalone without Replit's router.
-4. `VITE_BRANDFETCH_CLIENT_ID` — a *public* client ID (safe to expose,
-   Brandfetch's model), current value lives in `.replit`'s `[userenv.shared]`.
+See `DEPLOY.md` — it covers local dev (Postgres + api-server + vite dev
+server, no Replit router needed) and the Vercel (frontend) + Render
+(backend) production topology, including which env vars each side needs
+(`VITE_API_BASE_URL`, `VITE_BRANDFETCH_CLIENT_ID`, `DATABASE_URL`).
+
+There is no migrations folder — this project uses `drizzle-kit push`
+(`pnpm --filter db run push`), not versioned migrations. Render's build
+command runs this on every deploy for exactly that reason (see next
+gotcha).
 
 ## Gotchas learned the hard way
 
@@ -57,20 +60,19 @@ mapping. Outside Replit that router doesn't exist, so:
   (`game:start`, guesses) become no-ops with zero client-side feedback.
   This was the root cause of a real "multiplayer doesn't work" bug —
   don't reintroduce it by moving session state back to `localStorage`.
-- **DB schema drift between the Replit dev workspace and the deployed
-  app is a real, silent failure mode.** `scripts/post-merge.sh` runs
-  `pnpm --filter db push` on every merge *in the Replit dev workspace
-  only* — the production build
-  (`artifacts/api-server/.replit-artifact/artifact.toml`
-  `[services.production.build]`) does **not** run any schema sync.
-  `lib/db/src/index.ts` hard-throws if `DATABASE_URL` is unset, but a
-  *stale* schema (e.g. a table the code expects that was never pushed to
-  the prod DB) fails silently per-request instead: the route throws, the
-  frontend's `useGetSoloLeaderboard`/etc. hooks don't check `isError`
-  everywhere, and a broken leaderboard looks identical to an empty one.
-  If a "data disappeared" bug is reported in production, check schema
-  drift first. See tracked issue for wiring an automatic schema sync
-  into the production build step.
+- **DB schema drift is a real, silent failure mode — this is what
+  likely broke the leaderboard once already.** `lib/db/src/index.ts`
+  hard-throws if `DATABASE_URL` is unset, but a merely *stale* schema
+  (a table the code expects that was never pushed to that environment's
+  DB) fails silently per-request instead: the route throws, the
+  frontend's `useGetSoloLeaderboard`/etc. hooks didn't originally check
+  `isError` everywhere (now fixed for `SoloLeaderboard`, but audit the
+  rest if you touch them), and a broken leaderboard looked identical to
+  an empty one. The Render build command (`render.yaml`,
+  `DEPLOY.md`) now runs `pnpm --filter db run push` on every deploy for
+  exactly this reason — don't remove that step. If still developing via
+  the Replit workspace, note that `scripts/post-merge.sh` only syncs
+  schema *there*, on merge; it has no bearing on Render.
 - **This sandboxed environment's outbound TLS proxy breaks
   `cdn.brandfetch.io` requests** (`net::ERR_CERT_AUTHORITY_INVALID`),
   which makes every `PixelatedLogo` show "Image indisponible" here. Not
@@ -124,8 +126,10 @@ Tracked as GitHub issues (filed after the audit that produced this
 file) rather than duplicated here in detail — search issues for the
 current list. Headline items at time of writing:
 
-1. Production deploys never re-sync the DB schema (see gotcha above) —
-   highest-impact, most likely to silently break a feature again.
+1. ~~Production deploys never re-sync the DB schema~~ — fixed for the
+   Render deploy path (build command runs `pnpm --filter db run push`,
+   see `DEPLOY.md`). Still relevant if a deployment target is added that
+   doesn't run that step.
 2. Reconnecting mid-round (e.g. a page refresh) leaves a multiplayer
    client stuck on the "waiting for host" screen — the server never
    replays a `round:start` to a socket that (re)joins mid-game.
@@ -142,6 +146,9 @@ across sessions._
 
 ## Pointers
 
+- `DEPLOY.md` — Vercel + Render production topology, local dev setup.
+- `render.yaml` — backend infra-as-code (Render Blueprint).
+- `artifacts/logo-rush/vercel.json` — frontend build/rewrite config.
 - `replit.md` — Replit-specific run commands and product summary.
 - `.agents/memory/` — prior agent session notes (Brandfetch API usage,
   etc.).

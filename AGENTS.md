@@ -35,15 +35,21 @@ gotcha).
 
 ## Gotchas learned the hard way
 
-- **`pnpm install` may report `ERR_PNPM_IGNORED_BUILDS` for `esbuild`** in
-  sandboxes without a TTY (`pnpm approve-builds` needs interactive
-  input). Workaround: `node node_modules/.pnpm/esbuild@<version>/node_modules/esbuild/install.js`
-  once, then proceed — `esbuild` is already allow-listed in
-  `pnpm-workspace.yaml`'s `onlyBuiltDependencies`, this is just a
-  non-interactive-shell quirk. Don't "fix" it by editing
-  `pnpm-workspace.yaml`; a plain `pnpm install` in that state can
-  auto-append a spurious `allowBuilds:` stanza to it — revert that if
-  you see it in your diff.
+- **On pnpm 12.x, `onlyBuiltDependencies` in `pnpm-workspace.yaml` is
+  *not* enough on its own to let `pnpm install` run a dependency's build
+  script non-interactively** (contrary to older pnpm docs/expectations).
+  Without an explicit approval, `pnpm install` — including
+  `--frozen-lockfile`, e.g. on a fresh Render/CI checkout — fails hard
+  with `ERR_PNPM_IGNORED_BUILDS` for `esbuild`, even though `esbuild` is
+  listed in `onlyBuiltDependencies`. The actual fix (already applied,
+  see the `allowBuilds:` block right under `onlyBuiltDependencies` in
+  `pnpm-workspace.yaml`) is a *second*, separate approval ledger that
+  `pnpm approve-builds --all -y` writes automatically; it can also be
+  hand-written the same way. If a future dependency change reintroduces
+  this error for some other package, don't work around it with a manual
+  `node .../install.js` one-off (doesn't help CI) or `--ignore-scripts`
+  (skips the package's real setup) — run `pnpm approve-builds --all -y`
+  in a normal terminal and commit the `allowBuilds:` entry it adds.
 - **The socket returned by `lib/socket.ts#getSocket()` is a module-level
   singleton reused for the whole app lifetime** (room gameplay, home-page
   presence/live-stats, everything). Never call `socket.disconnect()` for

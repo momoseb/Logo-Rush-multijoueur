@@ -95,6 +95,28 @@ export interface SoloScoreInput {
   roundDuration: SoloScoreInputRoundDuration;
 }
 
+export type LogoReportInputReason = typeof LogoReportInputReason[keyof typeof LogoReportInputReason];
+
+
+export const LogoReportInputReason = {
+  unknown: 'unknown',
+  incorrect: 'incorrect',
+  other: 'other',
+} as const;
+
+export interface LogoReportInput {
+  /**
+     * @minLength 1
+     * @maxLength 64
+     */
+  logoId: string;
+  reason: LogoReportInputReason;
+}
+
+export interface LogoReportResult {
+  ok: boolean;
+}
+
 export type GetSoloLeaderboardParams = {
 roundCount: GetSoloLeaderboardRoundCount;
 roundDuration: GetSoloLeaderboardRoundDuration;

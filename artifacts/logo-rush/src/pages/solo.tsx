@@ -18,6 +18,7 @@ import { ArrowLeft, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PixelatedLogo } from '@/components/pixelated-logo';
 import { SoloLeaderboard } from '@/components/solo-leaderboard';
+import { ReportLogoButton } from '@/components/report-logo-button';
 
 type GameState = 'setup' | 'playing' | 'round_recap' | 'results';
 type RoundCount = 5 | 10 | 15 | 20;
@@ -50,7 +51,7 @@ export default function Solo() {
   const guessInputRef = useRef<HTMLInputElement>(null);
   const submittedResultRef = useRef(false);
   const leaderboardParams = { roundCount, roundDuration };
-  const { data: leaderboard, isLoading: isLeaderboardLoading } = useGetSoloLeaderboard(leaderboardParams);
+  const { data: leaderboard, isLoading: isLeaderboardLoading, isError: isLeaderboardError } = useGetSoloLeaderboard(leaderboardParams);
   const submitScore = useSubmitSoloScore({
     mutation: {
       onSuccess: () => {
@@ -200,7 +201,7 @@ export default function Solo() {
           Démarrer
         </Button>
         <div className="w-full max-w-xl">
-          <SoloLeaderboard entries={leaderboard} isLoading={isLeaderboardLoading} />
+          <SoloLeaderboard entries={leaderboard} isLoading={isLeaderboardLoading} isError={isLeaderboardError} />
         </div>
       </div>
     );
@@ -226,6 +227,7 @@ export default function Solo() {
           <SoloLeaderboard
             entries={submitScore.data ?? leaderboard}
             isLoading={submitScore.isPending || isLeaderboardLoading}
+            isError={!submitScore.data && isLeaderboardError}
           />
         </div>
       </div>
@@ -250,8 +252,11 @@ export default function Solo() {
 
       <Progress value={progressPercent} className={cn("h-3 w-full", timeLeft < 5 && "bg-destructive/20 [&>div]:bg-destructive")} />
       
-      <div className="flex items-center gap-2 font-mono text-xl font-medium" style={{ color: timeLeft < 5 ? 'var(--color-destructive)' : 'inherit' }}>
-        <Clock className="h-5 w-5" /> {timeLeft.toFixed(1)}s
+      <div className="w-full flex items-center justify-center gap-4">
+        <div className="flex items-center gap-2 font-mono text-xl font-medium" style={{ color: timeLeft < 5 ? 'var(--color-destructive)' : 'inherit' }}>
+          <Clock className="h-5 w-5" /> {timeLeft.toFixed(1)}s
+        </div>
+        {gameState === 'playing' && <ReportLogoButton logoId={currentLogo?.id} />}
       </div>
 
       <Card className="w-full aspect-square md:aspect-video flex items-center justify-center overflow-hidden bg-card/30 backdrop-blur-md border-primary/10 relative">

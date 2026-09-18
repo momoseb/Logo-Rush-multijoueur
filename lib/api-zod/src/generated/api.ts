@@ -100,3 +100,20 @@ export const SubmitSoloScoreResponseItem = zod.object({
 export const SubmitSoloScoreResponse = zod.array(SubmitSoloScoreResponseItem).max(5)
 
 
+/**
+ * @summary Flag a logo as unrecognizable or incorrect
+ */
+export const reportLogoBodyLogoIdMax = 64;
+
+
+
+export const ReportLogoBody = zod.object({
+  "logoId": zod.string().min(1).max(reportLogoBodyLogoIdMax),
+  "reason": zod.enum(['unknown', 'incorrect', 'other'])
+})
+
+export const ReportLogoResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+

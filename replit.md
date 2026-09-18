@@ -2,6 +2,9 @@
 
 Jeu web de reconnaissance de marques, jouable en solo ou à plusieurs en temps réel.
 
+> Voir aussi `AGENTS.md` à la racine du repo pour un guide plus complet
+> (architecture, pièges connus, issues ouvertes) destiné aux agents de code.
+
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)

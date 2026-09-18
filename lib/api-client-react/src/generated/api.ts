@@ -24,6 +24,8 @@ import type {
   GetSoloLeaderboardParams,
   HealthStatus,
   Logo,
+  LogoReportInput,
+  LogoReportResult,
   PublicRoom,
   SoloLeaderboardEntry,
   SoloScoreInput
@@ -528,5 +530,93 @@ export const useSubmitSoloScore = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getSubmitSoloScoreMutationOptions(options));
+    }
+
+export const getReportLogoUrl = () => {
+
+
+
+
+  return `/api/game/logo-reports`
+}
+
+/**
+ * @summary Flag a logo as unrecognizable or incorrect
+ */
+export const reportLogo = async (logoReportInput: LogoReportInput, options?: Parameters<typeof customFetch>[1]): Promise<LogoReportResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LogoReportResult>(getReportLogoUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(logoReportInput)
+  }
+);}
+
+
+
+
+
+export const getReportLogoMutationKey = () => ['reportLogo'] as const;
+
+export const getReportLogoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportLogo>>, TError,ReportLogoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reportLogo>>, TError,ReportLogoMutationVariables, TContext> => {
+
+const mutationKey = getReportLogoMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reportLogo>>, ReportLogoMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  reportLogo(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReportLogoMutationResult = NonNullable<Awaited<ReturnType<typeof reportLogo>>>
+    export type ReportLogoMutationBody = BodyType<LogoReportInput>
+    export type ReportLogoMutationError = ErrorType<unknown>
+    export type ReportLogoMutationVariables = {data: BodyType<LogoReportInput>}
+
+    /**
+ * @summary Flag a logo as unrecognizable or incorrect
+ */
+export const useReportLogo = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportLogo>>, TError,ReportLogoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reportLogo>>,
+        TError,
+        ReportLogoMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReportLogoMutationOptions(options));
     }
 

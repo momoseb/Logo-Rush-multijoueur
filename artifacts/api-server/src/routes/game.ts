@@ -1,9 +1,11 @@
 import { Router, type IRouter } from "express";
 import { and, asc, desc, eq } from "drizzle-orm";
-import { db, soloScoresTable } from "@workspace/db";
+import { db, logoReportsTable, soloScoresTable } from "@workspace/db";
 import {
   GetSoloLeaderboardQueryParams,
   GetSoloLeaderboardResponse,
+  ReportLogoBody,
+  ReportLogoResponse,
   SubmitSoloScoreBody,
   SubmitSoloScoreResponse,
 } from "@workspace/api-zod";
@@ -61,6 +63,21 @@ gameRouter.post("/game/solo-leaderboard", async (req, res): Promise<void> => {
     .orderBy(desc(soloScoresTable.score), asc(soloScoresTable.createdAt))
     .limit(5);
   res.status(201).json(SubmitSoloScoreResponse.parse(entries));
+});
+
+gameRouter.post("/game/logo-reports", async (req, res): Promise<void> => {
+  const input = ReportLogoBody.safeParse(req.body);
+  const logo = input.success ? logos.find((candidate) => candidate.id === input.data.logoId) : undefined;
+  if (!input.success || !logo) {
+    res.status(400).json({ error: "Signalement invalide." });
+    return;
+  }
+  await db.insert(logoReportsTable).values({
+    logoId: logo.id,
+    logoAnswer: logo.answer,
+    reason: input.data.reason,
+  });
+  res.status(201).json(ReportLogoResponse.parse({ ok: true }));
 });
 
 export default gameRouter;

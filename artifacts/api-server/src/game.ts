@@ -280,7 +280,7 @@ export function attachGameServer(io: Server) {
     socket.on("guess:submit", (input, callback) => {
       const room = findRoomForSocket(socket);
       const player = room?.players.find((p) => p.socketId === socket.id);
-      if (!room || !player || room.status !== "playing" || player.foundAt || !room.roundStartedAt) return;
+      if (!room || !player || room.status !== "playing" || player.foundAt !== undefined || !room.roundStartedAt) return;
       const logo = logos[room.logoOrder[room.roundIndex] % logos.length]!;
       const correct = [logo.answer, ...logo.aliases].some((answer) => clean(answer) === clean(String(input?.guess || "")));
       if (!correct) return callback?.({ correct: false });
@@ -295,10 +295,7 @@ export function attachGameServer(io: Server) {
       if (room.players.filter((p) => p.connected).every((p) => p.foundAt !== undefined)) finishRound(room);
     });
 
-    socket.on("room:leave", () => socket.disconnect());
-    socket.on("disconnect", () => {
-      const room = findRoomForSocket(socket);
-      if (!room) return broadcastRooms();
+    const leaveRoom = (room: Room) => {
       const player = room.players.find((p) => p.socketId === socket.id);
       if (player) player.connected = false;
       const nextHost = room.players.find((p) => p.connected);
@@ -309,6 +306,22 @@ export function attachGameServer(io: Server) {
         rooms.delete(room.code);
       } else io.to(room.code).emit("room:update", roomView(room));
       broadcastRooms();
+    };
+
+    // Only leave the socket.io room, not the whole connection: this socket is a
+    // long-lived singleton shared by the entire app (presence, live stats), so
+    // disconnecting it here would needlessly tear down and reconnect it every
+    // time a player simply navigates away from a room.
+    socket.on("room:leave", ({ code }: { code?: string } = {}) => {
+      const room = (code && rooms.get(String(code).toUpperCase())) || findRoomForSocket(socket);
+      if (!room) return;
+      socket.leave(room.code);
+      leaveRoom(room);
+    });
+    socket.on("disconnect", () => {
+      const room = findRoomForSocket(socket);
+      if (!room) return broadcastRooms();
+      leaveRoom(room);
     });
   });
   setInterval(() => {

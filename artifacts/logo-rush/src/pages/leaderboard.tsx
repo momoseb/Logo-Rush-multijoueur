@@ -13,7 +13,7 @@ export default function Leaderboard() {
   const [, setLocation] = useLocation();
   const [roundCount, setRoundCount] = useState<RoundCount>(5);
   const [roundDuration, setRoundDuration] = useState<RoundDuration>(20);
-  const { data, isLoading } = useGetSoloLeaderboard({ roundCount, roundDuration });
+  const { data, isLoading, isError } = useGetSoloLeaderboard({ roundCount, roundDuration });
 
   return (
     <div className="flex-1 w-full max-w-3xl mx-auto py-8 space-y-8">
@@ -62,6 +62,7 @@ export default function Leaderboard() {
       <SoloLeaderboard
         entries={data}
         isLoading={isLoading}
+        isError={isError}
         title={`Top 5 · ${roundCount} manches · ${roundDuration} s`}
       />
     </div>

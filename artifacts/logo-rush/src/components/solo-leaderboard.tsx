@@ -1,14 +1,16 @@
 import type { SoloLeaderboardEntry } from '@workspace/api-client-react';
-import { Medal, Trophy } from 'lucide-react';
+import { Medal, Trophy, AlertTriangle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
 export function SoloLeaderboard({
   entries,
   isLoading,
+  isError,
   title = 'Top 5 de ce mode',
 }: {
   entries?: SoloLeaderboardEntry[];
   isLoading: boolean;
+  isError?: boolean;
   title?: string;
 }) {
   return (
@@ -19,6 +21,10 @@ export function SoloLeaderboard({
       </div>
       {isLoading ? (
         <p className="py-5 text-center text-muted-foreground">Chargement du classement...</p>
+      ) : isError ? (
+        <p className="flex items-center justify-center gap-2 py-5 text-center text-destructive">
+          <AlertTriangle className="h-4 w-4" /> Classement indisponible pour le moment. Réessayez plus tard.
+        </p>
       ) : !entries?.length ? (
         <p className="py-5 text-center text-muted-foreground">Aucun score pour ce mode. Soyez le premier !</p>
       ) : (

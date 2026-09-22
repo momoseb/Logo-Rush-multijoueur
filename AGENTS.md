@@ -86,6 +86,27 @@ gotcha).
   `--ignore-certificate-errors` / `ignoreHTTPSErrors: true`, after which
   real logo images load and reveal normally. Don't chase "every logo is
   missing" as a regression without first checking this.
+- **Brandfetch's CDN actively rejects non-organic traffic as
+  "automated_traffic"** (`x-bf-error: automated_traffic` header, a 302
+  to `docs.brandfetch.com/docs/logo-link/guidelines` instead of the
+  image) — confirmed to hit BOTH server-side `fetch()` calls (curl, a
+  Node backend) AND Playwright-driven Chromium in this sandbox, even
+  with `--ignore-certificate-errors` set and even though Playwright
+  drives a real Chromium. This is why `PixelatedLogo`/`getBrandfetchUrl`
+  hotlink `cdn.brandfetch.io` **directly from the browser** and always
+  have — a server-side image proxy was tried once (to stop the brand
+  domain from appearing in API responses, alongside the id/answer-hiding
+  work described in the Architecture notes below) and had to be
+  reverted: Brandfetch blocked 100% of the proxy's requests in
+  production, breaking every logo image for every player. Real end-user
+  traffic (an actual human in an actual browser, not test automation)
+  is presumed to pass Brandfetch's bot check, since the game was
+  reportedly working for players before that proxy existed — but that
+  can't be verified from this sandbox or via Playwright, since both
+  trigger the same block. Don't try to "fix" broken-looking logos here
+  by adding a server-side proxy again; if logos are actually broken for
+  real users in production, that's a different, real bug to chase on
+  its own terms, not from this sandbox's automated tooling.
 - **Testing multiplayer with Playwright**: two `browser.newContext()`
   calls give each "player" fully isolated storage, like two different
   devices/browsers — use that to simulate two real, independent players.
@@ -106,33 +127,41 @@ gotcha).
 - **Guesses are validated server-side in both modes, and the catalog
   answer/id are never shipped to a playing client before a round ends**
   (`artifacts/api-server/src/logo-token.ts` +
-  `routes/game.ts#/game/solo/*`, `/game/logo-image/:token`). Catalog ids
-  are literal answer slugs (e.g. `"louisvuitton"` for "Louis Vuitton") and
-  `Logo.imageUrl` (`brandfetch://<domain>`) is just as readable, so
-  neither ever reaches a client directly during play — only an opaque,
-  AES-256-GCM-encrypted per-round token does (signed+encrypted, not just
-  base64: base64 alone is trivially reversible in the browser console and
-  would leak the id right back). The token decrypts server-side to
-  resolve a guess (`POST /game/solo/guess`), reveal the answer once a
-  round is over (`POST /game/solo/reveal`, or the multiplayer `round:end`
-  socket event), fetch the actual logo image without exposing its domain
-  (`GET /game/logo-image/:token`, which proxies the Brandfetch CDN
-  request from the server instead of the browser), or resolve a "Signaler
-  ce logo" report (`POST /game/logo-reports` — despite the field still
-  being named `logoId` for schema-compat, it's a token now, not a raw
-  id). `GET /game/logos` (full catalog incl. `answer`/`domain`) still
-  exists and is intentionally unchanged — it's what the unauthenticated
-  `/logo-audit` QA tool reads, a different, deliberately-unauthenticated
-  consumer (see below); it is simply no longer used by actual gameplay.
-  This closes the "open DevTools → Network tab → read the answer in
-  plaintext" cheat that both modes had before (solo shipped the *entire*
-  answer key up front via `/game/logos`; multiplayer's `round:start`
-  socket frame carried the raw id/domain). What's still true, on
-  purpose: solo *scores* remain client-computed (only guess-correctness
-  moved server-side), and a determined player who scripts direct API
-  calls (rather than reading passively) can still call `/reveal`
-  immediately — see the "no rate limiting / proof-of-play" open issue
-  below, which this doesn't attempt to fix.
+  `routes/game.ts#/game/solo/*`). Catalog ids are literal answer slugs
+  (e.g. `"louisvuitton"` for "Louis Vuitton"), so the id never reaches a
+  client directly during play — only an opaque, AES-256-GCM-encrypted
+  per-round token does (signed+encrypted, not just base64: base64 alone
+  is trivially reversible in the browser console and would leak the id
+  right back). The token decrypts server-side to resolve a guess
+  (`POST /game/solo/guess`), reveal the answer once a round is over
+  (`POST /game/solo/reveal`, or the multiplayer `round:end` socket
+  event), or resolve a "Signaler ce logo" report (`POST
+  /game/logo-reports` — despite the field still being named `logoId`
+  for schema-compat, it's a token now, not a raw id). `GET /game/logos`
+  (full catalog incl. `answer`/`domain`) still exists and is
+  intentionally unchanged — it's what the unauthenticated `/logo-audit`
+  QA tool reads, a different, deliberately-unauthenticated consumer
+  (see below); it is simply no longer used by actual gameplay. This
+  closes the "open DevTools → Network tab → read the answer in
+  plaintext" cheat that both modes had before (solo shipped the
+  *entire* answer key up front via `/game/logos`; multiplayer's
+  `round:start` socket frame carried the raw id). What's still true, on
+  purpose or by external constraint: solo *scores* remain client-computed
+  (only guess-correctness moved server-side); a determined player who
+  scripts direct API calls (rather than reading passively) can still
+  call `/reveal` immediately — see the "no rate limiting /
+  proof-of-play" open issue below, which this doesn't attempt to fix;
+  and **`Logo.imageUrl` (`brandfetch://<domain>`) is still sent to
+  clients as-is and is just as readable as the id would be** — a
+  server-side image proxy was tried to close that gap too, but
+  Brandfetch's CDN blocks non-browser requests outright (see the
+  sandbox gotcha above), so `PixelatedLogo` has to keep hotlinking
+  `cdn.brandfetch.io` directly from the browser, the same as before any
+  of this existed. The brand is therefore still identifiable via the
+  image request's URL once a round is live — this fix only stops it
+  from being handed out in a labeled JSON/socket field *before* that,
+  for every round at once, which was the far more trivially exploitable
+  half of the original complaint.
 - **Two multiplayer room modes**, both in the same `Room` type
   (`game.ts`), selected by the host at `room:create` time and fixed for
   the room's lifetime: `"ffa"` (up to 10 players, everyone who guesses

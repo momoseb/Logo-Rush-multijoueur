@@ -149,16 +149,6 @@ export const RevealSoloRoundResponse = zod.object({
 
 
 /**
- * @summary Proxy a round's logo image without exposing its source domain
- */
-export const GetLogoImageParams = zod.object({
-  "token": zod.coerce.string()
-})
-
-export const GetLogoImageResponse = zod.unknown()
-
-
-/**
  * @summary Flag a logo as unrecognizable or incorrect
  */
 export const reportLogoBodyLogoIdMax = 64;

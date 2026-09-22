@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { apiUrl } from '@/lib/api-base';
 
 type PixelatedLogoProps = {
   src: string;
@@ -9,6 +10,14 @@ type PixelatedLogoProps = {
 };
 
 export function getBrandfetchUrl(src: string, fallback = true) {
+  // Gameplay logos (solo and multiplayer) are served through the API's
+  // image proxy behind an opaque per-round token — the client never learns
+  // the real brand domain before the round ends. Only the internal
+  // /logo-audit tool still uses raw `brandfetch://<domain>` URLs directly.
+  if (src.startsWith('logotoken://')) {
+    const token = src.slice('logotoken://'.length);
+    return apiUrl(`/api/game/logo-image/${encodeURIComponent(token)}${fallback ? '?fallback=1' : ''}`);
+  }
   if (!src.startsWith('brandfetch://')) return src;
   const clientId = import.meta.env.VITE_BRANDFETCH_CLIENT_ID;
   const fallbackPath = fallback ? '/fallback/lettermark' : '';
@@ -43,7 +52,7 @@ export function PixelatedLogo({ src, progress, reveal = false, alt = 'Marque à 
       context.drawImage(buffer, 0, 0, resolution, resolution, 0, 0, size, size);
     };
     image.onerror = () => {
-      if (!src.startsWith('brandfetch://')) {
+      if (!src.startsWith('brandfetch://') && !src.startsWith('logotoken://')) {
         setStatus('missing');
         onStatusChange?.('missing');
         return;

@@ -95,6 +95,46 @@ export interface SoloScoreInput {
   roundDuration: SoloScoreInputRoundDuration;
 }
 
+export type SoloRoundDifficulty = typeof SoloRoundDifficulty[keyof typeof SoloRoundDifficulty];
+
+
+export const SoloRoundDifficulty = {
+  easy: 'easy',
+  medium: 'medium',
+  hard: 'hard',
+} as const;
+
+export interface SoloRound {
+  token: string;
+  category: string;
+  difficulty: SoloRoundDifficulty;
+  imageUrl: string;
+}
+
+export interface SoloGuessInput {
+  /** @minLength 1 */
+  token: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  guess: string;
+}
+
+export interface SoloGuessResult {
+  correct: boolean;
+  answer?: string;
+}
+
+export interface SoloRevealInput {
+  /** @minLength 1 */
+  token: string;
+}
+
+export interface SoloRevealResult {
+  answer: string;
+}
+
 export type LogoReportInputReason = typeof LogoReportInputReason[keyof typeof LogoReportInputReason];
 
 

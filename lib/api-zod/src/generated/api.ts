@@ -101,6 +101,62 @@ export const SubmitSoloScoreResponse = zod.array(SubmitSoloScoreResponseItem).ma
 
 
 /**
+ * @summary Playable solo round pool (answers withheld until guessed or revealed)
+ */
+export const ListSoloRoundsResponseItem = zod.object({
+  "token": zod.string(),
+  "category": zod.string(),
+  "difficulty": zod.enum(['easy', 'medium', 'hard']),
+  "imageUrl": zod.string()
+})
+export const ListSoloRoundsResponse = zod.array(ListSoloRoundsResponseItem)
+
+
+/**
+ * @summary Check a solo round guess server-side
+ */
+
+export const submitSoloGuessBodyGuessMax = 80;
+
+
+
+export const SubmitSoloGuessBody = zod.object({
+  "token": zod.string().min(1),
+  "guess": zod.string().min(1).max(submitSoloGuessBodyGuessMax)
+})
+
+export const SubmitSoloGuessResponse = zod.object({
+  "correct": zod.boolean(),
+  "answer": zod.string().optional()
+})
+
+
+/**
+ * @summary Reveal the answer for a solo round whose timer ran out
+ */
+
+
+
+export const RevealSoloRoundBody = zod.object({
+  "token": zod.string().min(1)
+})
+
+export const RevealSoloRoundResponse = zod.object({
+  "answer": zod.string()
+})
+
+
+/**
+ * @summary Proxy a round's logo image without exposing its source domain
+ */
+export const GetLogoImageParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const GetLogoImageResponse = zod.unknown()
+
+
+/**
  * @summary Flag a logo as unrecognizable or incorrect
  */
 export const reportLogoBodyLogoIdMax = 64;

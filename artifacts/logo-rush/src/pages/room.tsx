@@ -20,9 +20,10 @@ type RoomState = 'waiting' | 'playing' | 'round_recap' | 'results';
 export default function Room() {
   const { code } = useParams();
   const [, setLocation] = useLocation();
-  const { nickname, sessionId, ensureSessionId } = useGameStore();
+  const { nickname, sessionId, ensureSessionId, setNickname } = useGameStore();
   const { toast } = useToast();
-  
+  const [localName, setLocalName] = useState('');
+
   const [gameState, setGameState] = useState<RoomState>('waiting');
   const [players, setPlayers] = useState<Player[]>([]);
   const [roomName, setRoomName] = useState('');
@@ -45,10 +46,14 @@ export default function Room() {
 
   useEffect(() => {
     ensureSessionId();
-    if (!nickname || !code) {
+    if (!code) {
       setLocation('/');
       return;
     }
+    // No nickname yet: this is likely someone opening a shared room link for
+    // the first time. Stay on this route and let them set a pseudo inline
+    // (below) instead of bouncing them to `/` and losing the room code.
+    if (!nickname) return;
 
     const socket = getSocket();
     
@@ -110,11 +115,10 @@ export default function Room() {
       setPlayers(prev => prev.map(p => p.id === data.playerId ? { ...p, hasGuessed: true } : p));
     };
 
-    const handleRoundEnd = (data: { answer: string; imageUrl: string; players: Player[] }) => {
+    const handleRoundEnd = (data: { answer: string; players: Player[] }) => {
       if (timerRef.current) clearInterval(timerRef.current);
       setGameState('round_recap');
       setRoundAnswer(data.answer);
-      if (data.imageUrl) setCurrentLogo((logo: any) => ({ ...logo, imageUrl: data.imageUrl }));
       if (data.players) setPlayers(data.players);
     };
 
@@ -160,6 +164,10 @@ export default function Room() {
     getSocket().emit('game:start', { code });
   };
 
+  const handleRestartGame = () => {
+    getSocket().emit('game:restart', { code });
+  };
+
   const updateRoomSettings = (nextRoundCount: number, nextRoundDuration: number) => {
     getSocket().emit(
       'room:settings',
@@ -191,6 +199,56 @@ export default function Room() {
 
   const amIHost = myPlayerId === hostId;
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+
+  if (!nickname) {
+    const handleSaveName = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (localName.trim().length >= 2 && localName.trim().length <= 20) {
+        setNickname(localName.trim());
+      }
+    };
+
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center py-8 w-full max-w-md mx-auto">
+        <Card className="w-full bg-card/50 backdrop-blur-xl border-primary/20 shadow-2xl shadow-primary/10">
+          <div className="p-6">
+            <form onSubmit={handleSaveName} className="space-y-6">
+              <div className="space-y-2 text-center">
+                <h2 className="text-2xl font-semibold">Choisissez un pseudo</h2>
+                <p className="text-sm text-muted-foreground">
+                  pour rejoindre le salon <span className="font-mono text-primary">{code}</span>
+                </p>
+              </div>
+              <div className="space-y-4">
+                <Input
+                  value={localName}
+                  onChange={(e) => setLocalName(e.target.value)}
+                  placeholder="Ex: FlashDevin, LogoMaster..."
+                  className="text-center text-lg h-14 bg-background/50 border-primary/30 focus-visible:ring-primary"
+                  minLength={2}
+                  maxLength={20}
+                  autoFocus
+                  data-testid="input-nickname"
+                />
+                <Button
+                  type="submit"
+                  disabled={localName.trim().length < 2 || localName.trim().length > 20}
+                  className="w-full h-14 text-lg font-bold"
+                  size="lg"
+                  data-testid="button-save-nickname"
+                >
+                  Rejoindre le salon
+                </Button>
+                <Button type="button" variant="ghost" className="w-full" onClick={() => setLocation('/')}>
+                  <ArrowLeft className="mr-2 h-4 w-4" /> Retour à l'accueil
+                </Button>
+              </div>
+            </form>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   if (gameState === 'waiting') {
     return (
@@ -303,7 +361,7 @@ export default function Room() {
           <p className="text-sm text-muted-foreground font-semibold uppercase tracking-wider">Manche</p>
           <p className="text-2xl font-bold">{roundNumber} <span className="text-muted-foreground text-lg">/ {totalRounds}</span></p>
         </div>
-        {gameState === 'playing' && <ReportLogoButton logoId={currentLogo?.id} />}
+        {gameState === 'playing' && <ReportLogoButton logoId={currentLogo?.token} />}
         <div className="text-right">
           <p className="text-sm text-muted-foreground font-semibold uppercase tracking-wider">Temps</p>
           <p className={cn("text-3xl font-mono font-bold", timeLeft < 5 ? "text-destructive" : "text-primary")}>
@@ -321,7 +379,7 @@ export default function Room() {
             <AnimatePresence mode="wait">
               {(gameState === 'playing' || gameState === 'round_recap') && currentLogo && (
                 <motion.div
-                  key={currentLogo.id || 'logo'}
+                  key={currentLogo.token || 'logo'}
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 1.1, opacity: 0 }}
@@ -380,9 +438,18 @@ export default function Room() {
                   ))}
                 </div>
                 
-                <Button variant="outline" size="lg" onClick={() => setLocation('/')}>
-                  Retour à l'accueil
-                </Button>
+                <div className="flex flex-col items-center gap-3">
+                  {amIHost ? (
+                    <Button size="lg" className="h-14 px-10 text-lg" onClick={handleRestartGame}>
+                      <Play className="mr-2 h-5 w-5" /> Rejouer
+                    </Button>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">En attente de l'hôte pour relancer une partie...</p>
+                  )}
+                  <Button variant="outline" size="lg" onClick={() => setLocation('/')}>
+                    Retour à l'accueil
+                  </Button>
+                </div>
               </motion.div>
             )}
           </Card>

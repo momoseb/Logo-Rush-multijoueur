@@ -209,20 +209,26 @@ function startRound(room: Room) {
   room.roundStartedAt = Date.now() + 1200;
   room.players.forEach((p) => { p.foundAt = undefined; p.roundPoints = 0; });
   const logo = currentLogo(room);
-  // Never ship the catalog id or the raw brandfetch domain to clients before
-  // the round ends: both are effectively the answer in plaintext (ids are
-  // answer slugs, e.g. "louisvuitton"; domains like "louisvuitton.com" are
-  // just as readable) and would show up verbatim in this socket frame if
-  // someone opened the browser's Network tab. Only an opaque, per-round
-  // signed token goes out; `/api/game/logo-image/:token` resolves it
-  // server-side to fetch the real image.
+  // Never ship the catalog id to clients before the round ends: it's the
+  // answer in plaintext (ids are answer slugs, e.g. "louisvuitton") and
+  // would show up verbatim in this socket frame if someone opened the
+  // browser's Network tab. An opaque, per-round signed token goes out
+  // instead — resolved server-side for guesses, reveals and reports.
+  //
+  // `imageUrl` still carries the real `brandfetch://<domain>` value: the
+  // browser resolves it into a direct hotlink to Brandfetch's CDN, which
+  // actively rejects non-browser requests (see the AGENTS.md gotcha), so
+  // this can't be proxied through this server the way the id/answer are
+  // hidden. The domain is visible in the browser's own image request once
+  // the round is live, but at least isn't handed out up front alongside
+  // every other round's answer the way the id would be.
   const token = signLogoToken(logo.id);
   ioRef?.to(room.code).emit("round:start", {
     roundIndex: room.roundIndex,
     roundCount: room.roundCount,
     duration: room.roundDuration,
     startedAt: room.roundStartedAt,
-    logo: { token, imageUrl: `logotoken://${token}`, category: logo.category, difficulty: logo.difficulty },
+    logo: { token, imageUrl: logo.imageUrl, category: logo.category, difficulty: logo.difficulty },
     players: roomView(room).players,
   });
   room.roundTimer = setTimeout(() => finishRound(room), room.roundDuration * 1000 + 1200);

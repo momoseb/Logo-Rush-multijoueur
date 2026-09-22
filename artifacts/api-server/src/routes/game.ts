@@ -16,11 +16,8 @@ import {
 } from "@workspace/api-zod";
 import { clean, getPublicRooms, getStats, logos } from "../game";
 import { signLogoToken, verifyLogoToken } from "../logo-token";
-import { logger } from "../lib/logger";
 
 const gameRouter: IRouter = Router();
-
-const BRANDFETCH_CDN_CLIENT_ID = process.env.BRANDFETCH_CLIENT_ID || "1idke8AlkDn4BHhX1fs";
 
 function findLogoByToken(token: unknown) {
   const logoId = verifyLogoToken(token);
@@ -36,11 +33,24 @@ gameRouter.get("/game/logos", (_req, res) => res.json(logos));
 // includes `answer`/`aliases` — the id itself is an answer slug, so even the
 // id is replaced by an opaque per-round token. See /game/solo/guess and
 // /game/solo/reveal, which resolve the token server-side.
+//
+// `imageUrl` still carries the real `brandfetch://<domain>` value (the
+// browser resolves it into a direct hotlink to Brandfetch's CDN, same as
+// before this file's token scheme existed) — NOT proxied through this
+// server. Brandfetch's CDN actively rejects non-browser requests (blocks
+// them as "automated_traffic" and redirects to their docs site instead of
+// serving the image), so a server-side image proxy doesn't work; see the
+// AGENTS.md gotcha. The domain is therefore still visible in the browser's
+// own request to Brandfetch once a round is live, but at least it's no
+// longer handed out — along with the actual answer text — for every round
+// at once, up front, before the player has even started guessing.
 gameRouter.get("/game/solo/logos", (_req, res) => {
-  const rounds = logos.map((logo) => {
-    const token = signLogoToken(logo.id);
-    return { token, category: logo.category, difficulty: logo.difficulty, imageUrl: `logotoken://${token}` };
-  });
+  const rounds = logos.map((logo) => ({
+    token: signLogoToken(logo.id),
+    category: logo.category,
+    difficulty: logo.difficulty,
+    imageUrl: logo.imageUrl,
+  }));
   res.json(ListSoloRoundsResponse.parse(rounds));
 });
 
@@ -63,31 +73,6 @@ gameRouter.post("/game/solo/reveal", (req, res): void => {
     return;
   }
   res.json(RevealSoloRoundResponse.parse({ answer: logo.answer }));
-});
-
-gameRouter.get("/game/logo-image/:token", async (req, res): Promise<void> => {
-  const logo = findLogoByToken(req.params.token);
-  const domain = logo?.imageUrl.startsWith("brandfetch://") ? logo.imageUrl.slice("brandfetch://".length) : undefined;
-  if (!domain) {
-    res.status(404).end();
-    return;
-  }
-  const fallback = req.query.fallback === "1" || req.query.fallback === "true";
-  const upstreamUrl = `https://cdn.brandfetch.io/domain/${encodeURIComponent(domain)}/w/512/h/512/type/icon${fallback ? "/fallback/lettermark" : ""}?c=${encodeURIComponent(BRANDFETCH_CDN_CLIENT_ID)}`;
-  try {
-    const upstream = await fetch(upstreamUrl);
-    if (!upstream.ok || !upstream.body) {
-      res.status(upstream.status === 404 ? 404 : 502).end();
-      return;
-    }
-    res.setHeader("content-type", upstream.headers.get("content-type") || "image/png");
-    res.setHeader("cache-control", "no-store");
-    const { Readable } = await import("node:stream");
-    Readable.fromWeb(upstream.body as import("node:stream/web").ReadableStream).pipe(res);
-  } catch (error) {
-    logger.error({ error }, "Unable to proxy logo image");
-    res.status(502).end();
-  }
 });
 
 gameRouter.get("/game/solo-leaderboard", async (req, res): Promise<void> => {

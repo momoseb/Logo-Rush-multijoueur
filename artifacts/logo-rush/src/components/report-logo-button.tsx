@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Check, Flag } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useReportLogo } from '@workspace/api-client-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 export function ReportLogoButton({ logoId, className }: { logoId?: string; className?: string }) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [reportedId, setReportedId] = useState<string | null>(null);
   const reportLogo = useReportLogo();
@@ -20,10 +22,10 @@ export function ReportLogoButton({ logoId, className }: { logoId?: string; class
       {
         onSuccess: () => {
           setReportedId(logoId);
-          toast({ description: 'Merci, ce logo a été signalé.' });
+          toast({ description: t('report.thanks') });
         },
         onError: () => {
-          toast({ variant: 'destructive', description: "Impossible d'envoyer le signalement." });
+          toast({ variant: 'destructive', description: t('report.error') });
         },
       },
     );
@@ -40,7 +42,7 @@ export function ReportLogoButton({ logoId, className }: { logoId?: string; class
       data-testid="button-report-logo"
     >
       {reported ? <Check className="h-4 w-4" /> : <Flag className="h-4 w-4" />}
-      {reported ? 'Signalé' : 'Logo méconnaissable ?'}
+      {reported ? t('report.reported') : t('report.action')}
     </Button>
   );
 }

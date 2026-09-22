@@ -1,8 +1,10 @@
 import { type ReactNode, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { LanguageSwitcher } from '@/components/language-switcher';
 import { useHealthCheck, getHealthCheckQueryKey, getGetGameStatsQueryKey } from '@workspace/api-client-react';
 import {
   Route,
@@ -45,21 +47,22 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
 }
 
 function ServerStatus() {
+  const { t } = useTranslation();
   const { data, isError } = useHealthCheck({ query: { queryKey: getHealthCheckQueryKey(), refetchInterval: 30000 } });
-  
+
   if (isError || (data && data.status !== 'ok')) {
     return (
       <div className="fixed bottom-4 right-4 flex items-center gap-2 text-xs font-medium text-destructive bg-background/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-destructive/20">
         <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-        Hors ligne
+        {t('common.offline')}
       </div>
     );
   }
-  
+
   return (
     <div className="fixed bottom-4 right-4 flex items-center gap-2 text-xs font-medium text-muted-foreground bg-background/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-border/50">
       <div className="w-2 h-2 rounded-full bg-green-500" />
-      En ligne
+      {t('common.online')}
     </div>
   );
 }
@@ -102,6 +105,7 @@ function App() {
               <Router />
             </div>
             <ServerStatus />
+            <LanguageSwitcher />
           </main>
         </WouterRouter>
         <Toaster />

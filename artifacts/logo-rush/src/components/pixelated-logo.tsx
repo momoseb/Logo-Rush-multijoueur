@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { apiUrl } from '@/lib/api-base';
 
 type PixelatedLogoProps = {
@@ -27,7 +28,8 @@ export function getBrandfetchUrl(src: string, fallback = true) {
   const fallbackPath = fallback ? '/fallback/lettermark' : '';
   return `https://cdn.brandfetch.io/domain/${encodeURIComponent(src.slice('brandfetch://'.length))}/w/512/h/512/type/icon${fallbackPath}?c=${encodeURIComponent(clientId || '')}`;
 }
-export function PixelatedLogo({ src, progress, reveal = false, alt = 'Marque à deviner', aspectRatio = { w: 1, h: 1 }, onStatusChange }: PixelatedLogoProps) {
+export function PixelatedLogo({ src, progress, reveal = false, alt, aspectRatio = { w: 1, h: 1 }, onStatusChange }: PixelatedLogoProps) {
+  const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState<'loading' | 'loaded' | 'missing' | 'lettermark'>('loading');
 
@@ -86,15 +88,15 @@ export function PixelatedLogo({ src, progress, reveal = false, alt = 'Marque à 
 
   return (
     <div className="relative h-full w-full" style={{ maxHeight: '32rem', maxWidth: `${32 * (width / longEdge)}rem`, aspectRatio: `${aspectRatio.w} / ${aspectRatio.h}` }}>
-      <canvas ref={canvasRef} role="img" aria-label={alt} className="h-full w-full object-contain" />
+      <canvas ref={canvasRef} role="img" aria-label={alt ?? t('common.imageToGuess')} className="h-full w-full object-contain" />
       {status === 'missing' && (
         <div className="absolute inset-0 flex items-center justify-center rounded-xl border border-destructive/40 bg-destructive/10 text-sm font-semibold text-destructive">
-          Image indisponible
+          {t('common.imageUnavailable')}
         </div>
       )}
       {status === 'lettermark' && (
         <span className="absolute right-2 top-2 rounded-md bg-amber-500 px-2 py-1 text-xs font-bold text-black">
-          Lettermark
+          {t('common.lettermark')}
         </span>
       )}
     </div>

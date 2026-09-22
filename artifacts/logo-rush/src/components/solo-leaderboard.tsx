@@ -1,32 +1,34 @@
 import type { SoloLeaderboardEntry } from '@workspace/api-client-react';
 import { Medal, Trophy, AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Card } from '@/components/ui/card';
 
 export function SoloLeaderboard({
   entries,
   isLoading,
   isError,
-  title = 'Top 5 de ce mode',
+  title,
 }: {
   entries?: SoloLeaderboardEntry[];
   isLoading: boolean;
   isError?: boolean;
   title?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <Card className="w-full p-5 bg-card/50 backdrop-blur-md border-primary/20">
       <div className="mb-4 flex items-center gap-2">
         <Trophy className="h-5 w-5 text-primary" />
-        <h2 className="text-xl font-bold">{title}</h2>
+        <h2 className="text-xl font-bold">{title ?? t('soloLeaderboard.defaultTitle')}</h2>
       </div>
       {isLoading ? (
-        <p className="py-5 text-center text-muted-foreground">Chargement du classement...</p>
+        <p className="py-5 text-center text-muted-foreground">{t('soloLeaderboard.loading')}</p>
       ) : isError ? (
         <p className="flex items-center justify-center gap-2 py-5 text-center text-destructive">
-          <AlertTriangle className="h-4 w-4" /> Classement indisponible pour le moment. Réessayez plus tard.
+          <AlertTriangle className="h-4 w-4" /> {t('soloLeaderboard.error')}
         </p>
       ) : !entries?.length ? (
-        <p className="py-5 text-center text-muted-foreground">Aucun score pour ce mode. Soyez le premier !</p>
+        <p className="py-5 text-center text-muted-foreground">{t('soloLeaderboard.empty')}</p>
       ) : (
         <div className="space-y-2">
           {entries.map((entry, index) => (

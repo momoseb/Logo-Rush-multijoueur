@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Users, Plus, Hash, LogIn } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Hash, LogIn, Swords, Trophy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Multiplayer() {
@@ -19,7 +19,9 @@ export default function Multiplayer() {
   
   const [joinCode, setJoinCode] = useState('');
   const [newRoomName, setNewRoomName] = useState('');
+  const [newRoomMode, setNewRoomMode] = useState<'ffa' | 'duel'>('ffa');
   const [newRoomRoundCount, setNewRoomRoundCount] = useState(5);
+  const [newRoomTargetScore, setNewRoomTargetScore] = useState(5);
   const [newRoomRoundDuration, setNewRoomRoundDuration] = useState(20);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -36,13 +38,15 @@ export default function Multiplayer() {
     setIsCreating(true);
     
     const socket = getSocket();
-    socket.emit('room:create', { 
+    socket.emit('room:create', {
       name: newRoomName.trim(),
       nickname,
       sessionId,
       isPublic: true,
-      maxPlayers: 10,
+      maxPlayers: newRoomMode === 'duel' ? 2 : 10,
+      mode: newRoomMode,
       roundCount: newRoomRoundCount,
+      targetScore: newRoomTargetScore,
       roundDuration: newRoomRoundDuration
     }, (result: { ok: boolean; room?: { code: string }; error?: string }) => {
       setIsCreating(false);
@@ -91,7 +95,14 @@ export default function Multiplayer() {
                 <Card key={room.code} className="bg-card/40 backdrop-blur-md hover:border-primary/50 transition-colors">
                   <CardHeader className="pb-2">
                     <CardTitle className="flex justify-between items-center text-lg">
-                      <span>{room.name}</span>
+                      <span className="flex items-center gap-2">
+                        {room.name}
+                        {room.mode === 'duel' && (
+                          <span className="flex items-center gap-1 text-xs font-semibold bg-secondary/20 text-secondary px-2 py-0.5 rounded-md">
+                            <Swords className="h-3 w-3" /> Duel
+                          </span>
+                        )}
+                      </span>
                       <span className="text-xs font-mono bg-primary/20 text-primary px-2 py-1 rounded-md">{room.code}</span>
                     </CardTitle>
                   </CardHeader>
@@ -100,8 +111,13 @@ export default function Multiplayer() {
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Users className="h-4 w-4" />
                         {room.playerCount} / {room.maxPlayers} joueurs
+                        {room.mode === 'duel' && (
+                          <span className="flex items-center gap-1">
+                            <Trophy className="h-3.5 w-3.5" /> {room.targetScore} pts
+                          </span>
+                        )}
                       </div>
-                      <Button 
+                      <Button
                         size="sm"
                         disabled={room.status === 'playing' || room.playerCount >= room.maxPlayers}
                         onClick={() => setLocation(`/room/${room.code}`)}
@@ -153,7 +169,7 @@ export default function Multiplayer() {
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium mb-1 block">Nom du salon</label>
-                    <Input 
+                    <Input
                       value={newRoomName}
                       onChange={(e) => setNewRoomName(e.target.value)}
                       placeholder="Le repaire des boss"
@@ -162,20 +178,68 @@ export default function Multiplayer() {
                     />
                   </div>
                   <div>
-                    <p className="mb-2 text-sm font-medium">Nombre de manches</p>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[5, 10, 15, 20].map((value) => (
-                        <Button
-                          key={value}
-                          type="button"
-                          variant={newRoomRoundCount === value ? 'default' : 'outline'}
-                          onClick={() => setNewRoomRoundCount(value)}
-                        >
-                          {value}
-                        </Button>
-                      ))}
+                    <p className="mb-2 text-sm font-medium">Mode de jeu</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant={newRoomMode === 'ffa' ? 'default' : 'outline'}
+                        className="h-auto py-3 flex-col gap-1"
+                        onClick={() => setNewRoomMode('ffa')}
+                        data-testid="button-mode-ffa"
+                      >
+                        <Users className="h-4 w-4" />
+                        Classique
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={newRoomMode === 'duel' ? 'default' : 'outline'}
+                        className="h-auto py-3 flex-col gap-1"
+                        onClick={() => setNewRoomMode('duel')}
+                        data-testid="button-mode-duel"
+                      >
+                        <Swords className="h-4 w-4" />
+                        Duel 1v1
+                      </Button>
                     </div>
+                    {newRoomMode === 'duel' && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        2 joueurs. Le premier à trouver la réponse marque le point.
+                      </p>
+                    )}
                   </div>
+                  {newRoomMode === 'ffa' ? (
+                    <div>
+                      <p className="mb-2 text-sm font-medium">Nombre de manches</p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[5, 10, 15, 20].map((value) => (
+                          <Button
+                            key={value}
+                            type="button"
+                            variant={newRoomRoundCount === value ? 'default' : 'outline'}
+                            onClick={() => setNewRoomRoundCount(value)}
+                          >
+                            {value}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="mb-2 text-sm font-medium">Points pour gagner</p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[5, 10, 15, 20].map((value) => (
+                          <Button
+                            key={value}
+                            type="button"
+                            variant={newRoomTargetScore === value ? 'default' : 'outline'}
+                            onClick={() => setNewRoomTargetScore(value)}
+                          >
+                            {value}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <p className="mb-2 text-sm font-medium">Durée d'une manche</p>
                     <div className="grid grid-cols-3 gap-2">

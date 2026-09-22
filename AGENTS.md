@@ -133,6 +133,25 @@ gotcha).
   calls (rather than reading passively) can still call `/reveal`
   immediately — see the "no rate limiting / proof-of-play" open issue
   below, which this doesn't attempt to fix.
+- **Two multiplayer room modes**, both in the same `Room` type
+  (`game.ts`), selected by the host at `room:create` time and fixed for
+  the room's lifetime: `"ffa"` (up to 10 players, everyone who guesses
+  correctly scores speed-weighted points, game ends after `roundCount`
+  rounds — the original/default mode) and `"duel"` (exactly 2 players,
+  `maxPlayers` forced to 2 server-side regardless of what the client
+  sends; the first correct guess each round wins it outright — 1 point,
+  round ends immediately via `finishRound(room)`, the other player gets
+  nothing even if they also guess correctly afterwards, since
+  `room.players.some(p => p.foundAt !== undefined)` is already true by
+  then; the match ends the instant either player's score reaches
+  `room.targetScore`, not after a fixed round count). Duel scores are
+  intentionally excluded from `saveMultiplayerScores` — a duel win like
+  "5" isn't comparable to an FFA score in the thousands on the shared
+  solo/multiplayer leaderboard. `currentLogo(room)` wraps `roundIndex`
+  into both `logoOrder.length` and `logos.length` because a duel has no
+  fixed round cap (unlike FFA, capped at `roundCount <= 20`) and could in
+  principle outlast the catalog on an unlucky, very evenly matched
+  streak of round draws.
 - `game.ts`'s `roomView()` strips both `socketId` and `sessionId` from
   the player list before broadcasting it to a room. Don't add `sessionId`
   back there: `room:join` reconnects a socket to its player slot purely

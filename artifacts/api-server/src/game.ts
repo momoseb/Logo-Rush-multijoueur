@@ -31,8 +31,14 @@ type Room = {
   hostId: string;
   isPublic: boolean;
   maxPlayers: number;
+  // "ffa": every player scores speed-weighted points each round, over a
+  // fixed number of rounds (roundCount). "duel": exactly 2 players, the
+  // first correct guess wins the round outright (1 point, round ends
+  // immediately), first to targetScore wins the match.
+  mode: "ffa" | "duel";
   roundCount: number;
   roundDuration: number;
+  targetScore: number;
   status: "waiting" | "playing" | "results";
   players: Player[];
   logoOrder: number[];
@@ -101,6 +107,7 @@ const rooms = new Map<string, Room>();
 let ioRef: Server | undefined;
 const leaderboardRoundCounts = new Set([5, 10, 15, 20]);
 const leaderboardRoundDurations = new Set([15, 20, 30]);
+const allowedTargetScores = new Set([5, 10, 15, 20]);
 
 export const clean = (value: string) => value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f'’\s._-]/g, "");
 const randomCode = () => Math.random().toString(36).slice(2, 7).toUpperCase();
@@ -110,8 +117,10 @@ const publicRoom = (room: Room) => ({
   hostName: room.players.find((p) => p.id === room.hostId)?.nickname ?? "Hôte",
   playerCount: room.players.filter((p) => p.connected).length,
   maxPlayers: room.maxPlayers,
+  mode: room.mode,
   roundCount: room.roundCount,
   roundDuration: room.roundDuration,
+  targetScore: room.targetScore,
   status: room.status === "waiting" ? "waiting" : "playing",
 });
 const roomView = (room: Room) => ({
@@ -144,6 +153,11 @@ function broadcastRooms() {
 }
 
 async function saveMultiplayerScores(room: Room) {
+  // Duel scores (a small "first to N points" count) aren't comparable to FFA
+  // scores (time-weighted, in the thousands) — keep them off the shared
+  // solo/multiplayer leaderboard entirely rather than have a duel win of "5"
+  // show up next to FFA scores in the thousands.
+  if (room.mode === "duel") return;
   if (!leaderboardRoundCounts.has(room.roundCount) || !leaderboardRoundDurations.has(room.roundDuration)) return;
   try {
     await db.insert(soloScoresTable).values(
@@ -159,16 +173,28 @@ async function saveMultiplayerScores(room: Room) {
   }
 }
 
+// room.logoOrder is a shuffled permutation of all catalog indices, sized to
+// logos.length. FFA rounds are capped by roundCount (<= 20) so it never runs
+// out, but a duel has no fixed round cap — it can in principle run longer
+// than the catalog is long (very evenly matched players, lots of round
+// draws) — so wrap roundIndex into logoOrder's own length too, not just the
+// catalog's, to avoid ever indexing past the end of either array.
+const currentLogo = (room: Room) => logos[room.logoOrder[room.roundIndex % room.logoOrder.length]! % logos.length]!;
+
 function finishRound(room: Room) {
   if (room.status !== "playing") return;
   if (room.roundTimer) clearTimeout(room.roundTimer);
-  const logo = logos[room.logoOrder[room.roundIndex] % logos.length]!;
+  const logo = currentLogo(room);
   ioRef?.to(room.code).emit("round:end", {
     answer: logo.answer,
     players: room.players.map((p) => ({ id: p.id, nickname: p.nickname, score: p.score, foundAt: p.foundAt, roundPoints: p.roundPoints })).sort((a, b) => (b.roundPoints - a.roundPoints)),
   });
   room.nextTimer = setTimeout(async () => {
-    if (room.roundIndex + 1 >= room.roundCount) {
+    const gameOver =
+      room.mode === "duel"
+        ? room.players.some((p) => p.score >= room.targetScore)
+        : room.roundIndex + 1 >= room.roundCount;
+    if (gameOver) {
       room.status = "results";
       await saveMultiplayerScores(room);
       ioRef?.to(room.code).emit("game:end", roomView(room));
@@ -182,7 +208,7 @@ function finishRound(room: Room) {
 function startRound(room: Room) {
   room.roundStartedAt = Date.now() + 1200;
   room.players.forEach((p) => { p.foundAt = undefined; p.roundPoints = 0; });
-  const logo = logos[room.logoOrder[room.roundIndex] % logos.length]!;
+  const logo = currentLogo(room);
   // Never ship the catalog id or the raw brandfetch domain to clients before
   // the round ends: both are effectively the answer in plaintext (ids are
   // answer slugs, e.g. "louisvuitton"; domains like "louisvuitton.com" are
@@ -219,14 +245,19 @@ export function attachGameServer(io: Server) {
     socket.on("room:create", (input, callback) => {
       const code = randomCode();
       const playerId = crypto.randomUUID();
+      const mode: Room["mode"] = input?.mode === "duel" ? "duel" : "ffa";
+      const requestedTargetScore = Number(input?.targetScore);
       const room: Room = {
         code,
         name: String(input?.name || "Salon sans nom").slice(0, 32),
         hostId: playerId,
         isPublic: input?.isPublic !== false,
-        maxPlayers: Math.min(10, Math.max(2, Number(input?.maxPlayers) || 6)),
+        // Duel is strictly 1v1: ignore whatever maxPlayers the client sent.
+        maxPlayers: mode === "duel" ? 2 : Math.min(10, Math.max(2, Number(input?.maxPlayers) || 6)),
+        mode,
         roundCount: Math.min(20, Math.max(1, Number(input?.roundCount) || 5)),
         roundDuration: Math.min(30, Math.max(10, Number(input?.roundDuration) || 20)),
+        targetScore: allowedTargetScores.has(requestedTargetScore) ? requestedTargetScore : 5,
         status: "waiting",
         players: [{ id: playerId, sessionId: String(input?.sessionId || crypto.randomUUID()), socketId: socket.id, nickname: String(input?.nickname || "Joueur").slice(0, 20), score: 0, roundPoints: 0, connected: true }],
         logoOrder: [...logos.keys()].sort(() => Math.random() - 0.5),
@@ -265,6 +296,7 @@ export function attachGameServer(io: Server) {
       const room = findRoomForSocket(socket);
       const player = room?.players.find((p) => p.socketId === socket.id);
       if (!room || player?.id !== room.hostId || room.status === "playing") return;
+      if (room.mode === "duel" && room.players.filter((p) => p.connected).length < 2) return;
       room.status = "playing";
       room.roundIndex = 0;
       room.players.forEach((p) => { p.score = 0; });
@@ -292,7 +324,12 @@ export function attachGameServer(io: Server) {
       if (!room || player?.id !== room.hostId || room.status !== "waiting") {
         return callback?.({ ok: false, error: "Seul l'hôte peut modifier les réglages avant la partie." });
       }
-      room.roundCount = Math.min(20, Math.max(1, Number(input?.roundCount) || room.roundCount));
+      if (room.mode === "duel") {
+        const requestedTargetScore = Number(input?.targetScore);
+        if (allowedTargetScores.has(requestedTargetScore)) room.targetScore = requestedTargetScore;
+      } else {
+        room.roundCount = Math.min(20, Math.max(1, Number(input?.roundCount) || room.roundCount));
+      }
       room.roundDuration = Math.min(30, Math.max(10, Number(input?.roundDuration) || room.roundDuration));
       room.lastActiveAt = Date.now();
       io.to(room.code).emit("room:update", roomView(room));
@@ -304,10 +341,26 @@ export function attachGameServer(io: Server) {
       const room = findRoomForSocket(socket);
       const player = room?.players.find((p) => p.socketId === socket.id);
       if (!room || !player || room.status !== "playing" || player.foundAt !== undefined || !room.roundStartedAt) return;
-      const logo = logos[room.logoOrder[room.roundIndex] % logos.length]!;
+      const logo = currentLogo(room);
       const correct = [logo.answer, ...logo.aliases].some((answer) => clean(answer) === clean(String(input?.guess || "")));
       if (!correct) return callback?.({ correct: false });
       const elapsed = Math.max(0, Date.now() - room.roundStartedAt);
+
+      if (room.mode === "duel") {
+        // Winner-takes-the-round: once someone has found it, later correct
+        // guesses this round don't score (there's nothing to race for
+        // anymore) — this can only be reached by the other player, since a
+        // found round ends immediately below.
+        if (room.players.some((p) => p.foundAt !== undefined)) return callback?.({ correct: false });
+        player.foundAt = elapsed;
+        player.roundPoints = 1;
+        player.score += 1;
+        callback?.({ correct: true, points: 1, rank: 1 });
+        io.to(room.code).emit("player:found", { playerId: player.id, nickname: player.nickname, elapsed, points: 1, rank: 1, players: roomView(room).players });
+        finishRound(room);
+        return;
+      }
+
       const points = Math.max(100, Math.round(1000 * (1 - elapsed / (room.roundDuration * 1000))));
       player.foundAt = elapsed;
       player.roundPoints = points;

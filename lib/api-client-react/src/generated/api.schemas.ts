@@ -15,6 +15,14 @@ export interface GameStats {
   gamesInProgress: number;
 }
 
+export type PublicRoomMode = typeof PublicRoomMode[keyof typeof PublicRoomMode];
+
+
+export const PublicRoomMode = {
+  ffa: 'ffa',
+  duel: 'duel',
+} as const;
+
 export type PublicRoomStatus = typeof PublicRoomStatus[keyof typeof PublicRoomStatus];
 
 
@@ -29,8 +37,10 @@ export interface PublicRoom {
   hostName: string;
   playerCount: number;
   maxPlayers: number;
+  mode: PublicRoomMode;
   roundCount: number;
   roundDuration: number;
+  targetScore: number;
   status: PublicRoomStatus;
 }
 

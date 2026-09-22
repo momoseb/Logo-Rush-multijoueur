@@ -216,7 +216,7 @@ components:
           type: integer
     PublicRoom:
       type: object
-      required: [code, name, hostName, playerCount, maxPlayers, roundCount, roundDuration, status]
+      required: [code, name, hostName, playerCount, maxPlayers, mode, roundCount, roundDuration, targetScore, status]
       properties:
         code:
           type: string
@@ -228,9 +228,14 @@ components:
           type: integer
         maxPlayers:
           type: integer
+        mode:
+          type: string
+          enum: [ffa, duel]
         roundCount:
           type: integer
         roundDuration:
+          type: integer
+        targetScore:
           type: integer
         status:
           type: string

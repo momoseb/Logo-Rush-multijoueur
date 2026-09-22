@@ -27,7 +27,12 @@ import type {
   LogoReportInput,
   LogoReportResult,
   PublicRoom,
+  SoloGuessInput,
+  SoloGuessResult,
   SoloLeaderboardEntry,
+  SoloRevealInput,
+  SoloRevealResult,
+  SoloRound,
   SoloScoreInput
 } from './api.schemas';
 
@@ -531,6 +536,336 @@ export const useSubmitSoloScore = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getSubmitSoloScoreMutationOptions(options));
     }
+
+export const getListSoloRoundsUrl = () => {
+
+
+
+
+  return `/api/game/solo/logos`
+}
+
+/**
+ * @summary Playable solo round pool (answers withheld until guessed or revealed)
+ */
+export const listSoloRounds = async ( options?: Parameters<typeof customFetch>[1]): Promise<SoloRound[]> => {
+
+  return customFetch<SoloRound[]>(getListSoloRoundsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSoloRoundsQueryKey = () => {
+    return [
+    `/api/game/solo/logos`
+    ] as const;
+    }
+
+
+export const getListSoloRoundsQueryOptions = <TData = Awaited<ReturnType<typeof listSoloRounds>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSoloRounds>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSoloRoundsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSoloRounds>>> = ({ signal }) => listSoloRounds({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSoloRounds>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSoloRoundsQueryResult = NonNullable<Awaited<ReturnType<typeof listSoloRounds>>>
+export type ListSoloRoundsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Playable solo round pool (answers withheld until guessed or revealed)
+ */
+
+export function useListSoloRounds<TData = Awaited<ReturnType<typeof listSoloRounds>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSoloRounds>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSoloRoundsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSubmitSoloGuessUrl = () => {
+
+
+
+
+  return `/api/game/solo/guess`
+}
+
+/**
+ * @summary Check a solo round guess server-side
+ */
+export const submitSoloGuess = async (soloGuessInput: SoloGuessInput, options?: Parameters<typeof customFetch>[1]): Promise<SoloGuessResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SoloGuessResult>(getSubmitSoloGuessUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(soloGuessInput)
+  }
+);}
+
+
+
+
+
+export const getSubmitSoloGuessMutationKey = () => ['submitSoloGuess'] as const;
+
+export const getSubmitSoloGuessMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSoloGuess>>, TError,SubmitSoloGuessMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitSoloGuess>>, TError,SubmitSoloGuessMutationVariables, TContext> => {
+
+const mutationKey = getSubmitSoloGuessMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitSoloGuess>>, SubmitSoloGuessMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitSoloGuess(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitSoloGuessMutationResult = NonNullable<Awaited<ReturnType<typeof submitSoloGuess>>>
+    export type SubmitSoloGuessMutationBody = BodyType<SoloGuessInput>
+    export type SubmitSoloGuessMutationError = ErrorType<unknown>
+    export type SubmitSoloGuessMutationVariables = {data: BodyType<SoloGuessInput>}
+
+    /**
+ * @summary Check a solo round guess server-side
+ */
+export const useSubmitSoloGuess = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSoloGuess>>, TError,SubmitSoloGuessMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitSoloGuess>>,
+        TError,
+        SubmitSoloGuessMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSubmitSoloGuessMutationOptions(options));
+    }
+
+export const getRevealSoloRoundUrl = () => {
+
+
+
+
+  return `/api/game/solo/reveal`
+}
+
+/**
+ * @summary Reveal the answer for a solo round whose timer ran out
+ */
+export const revealSoloRound = async (soloRevealInput: SoloRevealInput, options?: Parameters<typeof customFetch>[1]): Promise<SoloRevealResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SoloRevealResult>(getRevealSoloRoundUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(soloRevealInput)
+  }
+);}
+
+
+
+
+
+export const getRevealSoloRoundMutationKey = () => ['revealSoloRound'] as const;
+
+export const getRevealSoloRoundMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revealSoloRound>>, TError,RevealSoloRoundMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revealSoloRound>>, TError,RevealSoloRoundMutationVariables, TContext> => {
+
+const mutationKey = getRevealSoloRoundMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revealSoloRound>>, RevealSoloRoundMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  revealSoloRound(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevealSoloRoundMutationResult = NonNullable<Awaited<ReturnType<typeof revealSoloRound>>>
+    export type RevealSoloRoundMutationBody = BodyType<SoloRevealInput>
+    export type RevealSoloRoundMutationError = ErrorType<unknown>
+    export type RevealSoloRoundMutationVariables = {data: BodyType<SoloRevealInput>}
+
+    /**
+ * @summary Reveal the answer for a solo round whose timer ran out
+ */
+export const useRevealSoloRound = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revealSoloRound>>, TError,RevealSoloRoundMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revealSoloRound>>,
+        TError,
+        RevealSoloRoundMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRevealSoloRoundMutationOptions(options));
+    }
+
+export const getGetLogoImageUrl = (token: string,) => {
+
+
+
+
+  return `/api/game/logo-image/${token}`
+}
+
+/**
+ * @summary Proxy a round's logo image without exposing its source domain
+ */
+export const getLogoImage = async (token: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetLogoImageUrl(token),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLogoImageQueryKey = (token: string,) => {
+    return [
+    `/api/game/logo-image/${token}`
+    ] as const;
+    }
+
+
+export const getGetLogoImageQueryOptions = <TData = Awaited<ReturnType<typeof getLogoImage>>, TError = ErrorType<unknown>>(token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLogoImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLogoImageQueryKey(token);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLogoImage>>> = ({ signal }) => getLogoImage(token, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: token !== null && token !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLogoImage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLogoImageQueryResult = NonNullable<Awaited<ReturnType<typeof getLogoImage>>>
+export type GetLogoImageQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Proxy a round's logo image without exposing its source domain
+ */
+
+export function useGetLogoImage<TData = Awaited<ReturnType<typeof getLogoImage>>, TError = ErrorType<unknown>>(
+ token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLogoImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLogoImageQueryOptions(token,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getReportLogoUrl = () => {
 

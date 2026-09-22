@@ -33,6 +33,12 @@ ou manuellement :
   - `DATABASE_URL` — fournie automatiquement si vous liez une base Postgres Render
   - `PORT` — injectée automatiquement par Render, ne pas la fixer manuellement
   - `NODE_ENV=production`
+  - `BRANDFETCH_CLIENT_ID` (optionnelle) — identifiant public Brandfetch
+    utilisé par le serveur pour proxyfier les images de logo
+    (`GET /api/game/logo-image/:token`, voir `AGENTS.md`) sans jamais
+    exposer le domaine de la marque au client. À défaut, le serveur
+    retombe sur la même valeur publique que `VITE_BRANDFETCH_CLIENT_ID`
+    côté frontend.
 
 CORS est déjà permissif côté API (`cors()` sans restriction d'origine,
 Socket.IO avec `origin: true`) — aucune configuration supplémentaire

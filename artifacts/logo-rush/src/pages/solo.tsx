@@ -3,10 +3,12 @@ import { useLocation } from 'wouter';
 import {
   getGetSoloLeaderboardQueryKey,
   useGetSoloLeaderboard,
-  useListSoloLogos,
+  useListSoloRounds,
+  useRevealSoloRound,
+  useSubmitSoloGuess,
   useSubmitSoloScore,
 } from '@workspace/api-client-react';
-import type { Logo } from '@workspace/api-client-react';
+import type { SoloRound } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useGameStore } from '@/store/useGameStore';
 import { Button } from '@/components/ui/button';
@@ -24,28 +26,29 @@ type GameState = 'setup' | 'playing' | 'round_recap' | 'results';
 type RoundCount = 5 | 10 | 15 | 20;
 type RoundDuration = 15 | 20 | 30;
 
-function normalizeString(str: string) {
-  return str.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
 export default function Solo() {
   const [, setLocation] = useLocation();
   const nickname = useGameStore((state) => state.nickname);
   const queryClient = useQueryClient();
-  const { data: logos, isLoading } = useListSoloLogos();
-  
+  const { data: rounds, isLoading } = useListSoloRounds();
+
   const [gameState, setGameState] = useState<GameState>('setup');
   const [currentRound, setCurrentRound] = useState(0);
   const [score, setScore] = useState(0);
   const [roundCount, setRoundCount] = useState<RoundCount>(5);
   const [roundDuration, setRoundDuration] = useState<RoundDuration>(20);
-  const [gameLogos, setGameLogos] = useState<Logo[]>([]);
-  
+  const [gameRounds, setGameRounds] = useState<SoloRound[]>([]);
+
   // Round state
   const [timeLeft, setTimeLeft] = useState<number>(roundDuration);
   const [guess, setGuess] = useState('');
   const [roundResult, setRoundResult] = useState<'won' | 'lost' | null>(null);
-  
+  // The answer is only known once the server reveals it (on a correct guess,
+  // or once the timer runs out) — never upfront, unlike the old client-side
+  // answer key that used to ship the whole catalog (with answers) on page
+  // load and was trivially readable from the Network tab.
+  const [roundAnswer, setRoundAnswer] = useState('');
+
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const guessInputRef = useRef<HTMLInputElement>(null);
@@ -59,73 +62,91 @@ export default function Solo() {
       },
     },
   });
+  const guessMutation = useSubmitSoloGuess();
+  const revealMutation = useRevealSoloRound();
 
-  const currentLogo = gameLogos[currentRound];
+  const currentLogo = gameRounds[currentRound];
 
   const startGame = () => {
-    if (!logos?.length) return;
-    const selectedLogos = [...logos]
+    if (!rounds?.length) return;
+    const selectedRounds = [...rounds]
       .sort(() => Math.random() - 0.5)
-      .slice(0, Math.min(roundCount, logos.length));
-    setGameLogos(selectedLogos);
+      .slice(0, Math.min(roundCount, rounds.length));
+    setGameRounds(selectedRounds);
     submittedResultRef.current = false;
     setScore(0);
     setCurrentRound(0);
-    startRound();
+    startRound(selectedRounds[0]!);
   };
 
-  const startRound = () => {
+  const startRound = (round: SoloRound) => {
     setGameState('playing');
     setTimeLeft(roundDuration);
     setGuess('');
     setRoundResult(null);
+    setRoundAnswer('');
     startTimeRef.current = Date.now();
-    
+
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = window.setInterval(() => {
       const elapsed = (Date.now() - startTimeRef.current) / 1000;
       const remaining = Math.max(0, roundDuration - elapsed);
       setTimeLeft(remaining);
-      
+
       if (remaining <= 0) {
-        endRound('lost');
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+        handleTimeout(round);
       }
     }, 100);
   };
 
-  const endRound = (result: 'won' | 'lost') => {
+  const endRound = (result: 'won' | 'lost', answer: string) => {
     if (timerRef.current) clearInterval(timerRef.current);
     setRoundResult(result);
+    setRoundAnswer(answer);
     setGameState('round_recap');
-    
+
     if (result === 'won') {
       const points = Math.max(100, Math.round(1000 * (timeLeft / roundDuration)));
       setScore(s => s + points);
     }
   };
 
+  const handleTimeout = async (round: SoloRound) => {
+    try {
+      const result = await revealMutation.mutateAsync({ data: { token: round.token } });
+      endRound('lost', result.answer);
+    } catch {
+      endRound('lost', '');
+    }
+  };
+
   const nextRound = () => {
-    if (currentRound + 1 < gameLogos.length) {
-      setCurrentRound(r => r + 1);
-      startRound();
+    const nextIndex = currentRound + 1;
+    if (nextIndex < gameRounds.length) {
+      setCurrentRound(nextIndex);
+      startRound(gameRounds[nextIndex]!);
     } else {
       setGameState('results');
     }
   };
 
-  const handleGuessSubmit = (e: React.FormEvent) => {
+  const handleGuessSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (gameState !== 'playing' || !currentLogo) return;
-    
-    const normalizedGuess = normalizeString(guess);
-    const isValid = 
-      normalizeString(currentLogo.answer) === normalizedGuess ||
-      currentLogo.aliases.some(alias => normalizeString(alias) === normalizedGuess);
-      
-    if (isValid) {
-      endRound('won');
-    } else {
-      // Small shake animation could go here, for now just clear or keep
+    const guessValue = guess.trim();
+    if (gameState !== 'playing' || !currentLogo || !guessValue || guessMutation.isPending) return;
+
+    try {
+      const result = await guessMutation.mutateAsync({ data: { token: currentLogo.token, guess: guessValue } });
+      if (result.correct) {
+        endRound('won', result.answer || '');
+      } else {
+        setGuess('');
+      }
+    } catch {
       setGuess('');
     }
   };
@@ -150,7 +171,7 @@ export default function Solo() {
     };
     window.addEventListener('keydown', handleNextRoundKey);
     return () => window.removeEventListener('keydown', handleNextRoundKey);
-  }, [gameState, currentRound, gameLogos.length]);
+  }, [gameState, currentRound, gameRounds.length]);
 
   useEffect(() => {
     if (gameState !== 'results' || submittedResultRef.current || !nickname) return;
@@ -197,7 +218,7 @@ export default function Solo() {
             </div>
           </div>
         </Card>
-        <Button size="lg" className="h-16 px-12 text-2xl" onClick={startGame} disabled={!logos?.length}>
+        <Button size="lg" className="h-16 px-12 text-2xl" onClick={startGame} disabled={!rounds?.length}>
           Démarrer
         </Button>
         <div className="w-full max-w-xl">
@@ -242,7 +263,7 @@ export default function Solo() {
       <div className="w-full flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold tracking-wider uppercase text-muted-foreground">Manche</span>
-          <span className="text-2xl font-bold">{currentRound + 1} / {gameLogos.length}</span>
+          <span className="text-2xl font-bold">{currentRound + 1} / {gameRounds.length}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold tracking-wider uppercase text-muted-foreground">Score</span>
@@ -251,19 +272,19 @@ export default function Solo() {
       </div>
 
       <Progress value={progressPercent} className={cn("h-3 w-full", timeLeft < 5 && "bg-destructive/20 [&>div]:bg-destructive")} />
-      
+
       <div className="w-full flex items-center justify-center gap-4">
         <div className="flex items-center gap-2 font-mono text-xl font-medium" style={{ color: timeLeft < 5 ? 'var(--color-destructive)' : 'inherit' }}>
           <Clock className="h-5 w-5" /> {timeLeft.toFixed(1)}s
         </div>
-        {gameState === 'playing' && <ReportLogoButton logoId={currentLogo?.id} />}
+        {gameState === 'playing' && <ReportLogoButton logoId={currentLogo?.token} />}
       </div>
 
       <Card className="w-full aspect-square md:aspect-video flex items-center justify-center overflow-hidden bg-card/30 backdrop-blur-md border-primary/10 relative">
         <AnimatePresence mode="wait">
           {currentLogo && (
             <motion.div
-              key={currentLogo.id}
+              key={currentLogo.token}
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 1.1, opacity: 0 }}
@@ -275,7 +296,7 @@ export default function Solo() {
         </AnimatePresence>
 
         {gameState === 'round_recap' && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-6 z-10"
@@ -286,7 +307,7 @@ export default function Solo() {
               <XCircle className="w-24 h-24 text-destructive mb-4 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]" />
             )}
             <h2 className="text-4xl font-bold mb-2">
-              {currentLogo?.answer}
+              {roundAnswer}
             </h2>
             <p className="text-lg text-muted-foreground mb-8">
               {roundResult === 'won' ? `Trouvé en ${(roundDuration - timeLeft).toFixed(1)}s` : 'Temps écoulé !'}
@@ -300,19 +321,19 @@ export default function Solo() {
       </Card>
 
       <form onSubmit={handleGuessSubmit} className="w-full flex gap-4 relative z-0">
-        <Input 
+        <Input
           ref={guessInputRef}
           autoFocus
           value={guess}
           onChange={(e) => setGuess(e.target.value)}
           placeholder="Taper la marque ici..."
           className="h-14 text-xl text-center bg-card/50 backdrop-blur-md"
-          disabled={gameState !== 'playing'}
+          disabled={gameState !== 'playing' || guessMutation.isPending}
           data-testid="input-solo-guess"
         />
-        <Button 
-          type="submit" 
-          disabled={gameState !== 'playing' || !guess.trim()} 
+        <Button
+          type="submit"
+          disabled={gameState !== 'playing' || !guess.trim() || guessMutation.isPending}
           className="h-14 px-8 text-lg font-bold"
           data-testid="button-solo-submit"
         >

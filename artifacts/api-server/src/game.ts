@@ -2,6 +2,7 @@ import type { Server, Socket } from "socket.io";
 import { db, soloScoresTable } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { additionalLogos, correctedLogoDomain } from "./logo-catalog";
+import { signLogoToken } from "./logo-token";
 
 export type Logo = {
   id: string;
@@ -101,7 +102,7 @@ let ioRef: Server | undefined;
 const leaderboardRoundCounts = new Set([5, 10, 15, 20]);
 const leaderboardRoundDurations = new Set([15, 20, 30]);
 
-const clean = (value: string) => value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f'’\s._-]/g, "");
+export const clean = (value: string) => value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f'’\s._-]/g, "");
 const randomCode = () => Math.random().toString(36).slice(2, 7).toUpperCase();
 const publicRoom = (room: Room) => ({
   code: room.code,
@@ -118,7 +119,10 @@ const roomView = (room: Room) => ({
   isPublic: room.isPublic,
   hostId: room.hostId,
   roundIndex: room.roundIndex,
-  players: room.players.map(({ socketId: _socketId, ...player }) => player),
+  // Never broadcast sessionId to other players: it's how `room:join` matches
+  // a reconnecting socket back to its player slot, so leaking it would let
+  // anyone in the room reconnect as (i.e. hijack) another player.
+  players: room.players.map(({ socketId: _socketId, sessionId: _sessionId, ...player }) => player),
 });
 
 export const getStats = () => ({
@@ -161,7 +165,6 @@ function finishRound(room: Room) {
   const logo = logos[room.logoOrder[room.roundIndex] % logos.length]!;
   ioRef?.to(room.code).emit("round:end", {
     answer: logo.answer,
-    imageUrl: logo.imageUrl,
     players: room.players.map((p) => ({ id: p.id, nickname: p.nickname, score: p.score, foundAt: p.foundAt, roundPoints: p.roundPoints })).sort((a, b) => (b.roundPoints - a.roundPoints)),
   });
   room.nextTimer = setTimeout(async () => {
@@ -180,12 +183,20 @@ function startRound(room: Room) {
   room.roundStartedAt = Date.now() + 1200;
   room.players.forEach((p) => { p.foundAt = undefined; p.roundPoints = 0; });
   const logo = logos[room.logoOrder[room.roundIndex] % logos.length]!;
+  // Never ship the catalog id or the raw brandfetch domain to clients before
+  // the round ends: both are effectively the answer in plaintext (ids are
+  // answer slugs, e.g. "louisvuitton"; domains like "louisvuitton.com" are
+  // just as readable) and would show up verbatim in this socket frame if
+  // someone opened the browser's Network tab. Only an opaque, per-round
+  // signed token goes out; `/api/game/logo-image/:token` resolves it
+  // server-side to fetch the real image.
+  const token = signLogoToken(logo.id);
   ioRef?.to(room.code).emit("round:start", {
     roundIndex: room.roundIndex,
     roundCount: room.roundCount,
     duration: room.roundDuration,
     startedAt: room.roundStartedAt,
-    logo: { id: logo.id, imageUrl: logo.imageUrl, category: logo.category, difficulty: logo.difficulty },
+    logo: { token, imageUrl: `logotoken://${token}`, category: logo.category, difficulty: logo.difficulty },
     players: roomView(room).players,
   });
   room.roundTimer = setTimeout(() => finishRound(room), room.roundDuration * 1000 + 1200);
@@ -260,6 +271,18 @@ export function attachGameServer(io: Server) {
       room.logoOrder = [...logos.keys()].sort(() => Math.random() - 0.5);
       io.to(room.code).emit("game:start", roomView(room));
       startRound(room);
+      broadcastRooms();
+    });
+
+    socket.on("game:restart", () => {
+      const room = findRoomForSocket(socket);
+      const player = room?.players.find((p) => p.socketId === socket.id);
+      if (!room || player?.id !== room.hostId || room.status !== "results") return;
+      room.status = "waiting";
+      room.roundIndex = 0;
+      room.players.forEach((p) => { p.score = 0; p.foundAt = undefined; p.roundPoints = 0; });
+      room.lastActiveAt = Date.now();
+      io.to(room.code).emit("room:update", roomView(room));
       broadcastRooms();
     });
 

@@ -109,6 +109,75 @@ paths:
                 maxItems: 5
                 items:
                   $ref: "#/components/schemas/SoloLeaderboardEntry"
+  /game/solo/logos:
+    get:
+      operationId: listSoloRounds
+      tags: [game]
+      summary: Playable solo round pool (answers withheld until guessed or revealed)
+      responses:
+        "200":
+          description: Round pool
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SoloRound"
+  /game/solo/guess:
+    post:
+      operationId: submitSoloGuess
+      tags: [game]
+      summary: Check a solo round guess server-side
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SoloGuessInput"
+      responses:
+        "200":
+          description: Guess result; answer is only included when correct
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SoloGuessResult"
+  /game/solo/reveal:
+    post:
+      operationId: revealSoloRound
+      tags: [game]
+      summary: Reveal the answer for a solo round whose timer ran out
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SoloRevealInput"
+      responses:
+        "200":
+          description: Answer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SoloRevealResult"
+  /game/logo-image/{token}:
+    get:
+      operationId: getLogoImage
+      tags: [game]
+      summary: Proxy a round's logo image without exposing its source domain
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Logo image
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
   /game/logo-reports:
     post:
       operationId: reportLogo
@@ -220,6 +289,51 @@ components:
         roundDuration:
           type: integer
           enum: [15, 20, 30]
+    SoloRound:
+      type: object
+      required: [token, category, difficulty, imageUrl]
+      properties:
+        token:
+          type: string
+        category:
+          type: string
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+        imageUrl:
+          type: string
+    SoloGuessInput:
+      type: object
+      required: [token, guess]
+      properties:
+        token:
+          type: string
+          minLength: 1
+        guess:
+          type: string
+          minLength: 1
+          maxLength: 80
+    SoloGuessResult:
+      type: object
+      required: [correct]
+      properties:
+        correct:
+          type: boolean
+        answer:
+          type: string
+    SoloRevealInput:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 1
+    SoloRevealResult:
+      type: object
+      required: [answer]
+      properties:
+        answer:
+          type: string
     LogoReportInput:
       type: object
       required: [logoId, reason]

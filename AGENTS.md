@@ -103,6 +103,44 @@ gotcha).
   server-verified — the client computes and submits its own score,
   capped server-side only by a sanity ceiling (`score ≤ roundCount *
   1000`). See open issues about hardening this.
+- **Guesses are validated server-side in both modes, and the catalog
+  answer/id are never shipped to a playing client before a round ends**
+  (`artifacts/api-server/src/logo-token.ts` +
+  `routes/game.ts#/game/solo/*`, `/game/logo-image/:token`). Catalog ids
+  are literal answer slugs (e.g. `"louisvuitton"` for "Louis Vuitton") and
+  `Logo.imageUrl` (`brandfetch://<domain>`) is just as readable, so
+  neither ever reaches a client directly during play — only an opaque,
+  AES-256-GCM-encrypted per-round token does (signed+encrypted, not just
+  base64: base64 alone is trivially reversible in the browser console and
+  would leak the id right back). The token decrypts server-side to
+  resolve a guess (`POST /game/solo/guess`), reveal the answer once a
+  round is over (`POST /game/solo/reveal`, or the multiplayer `round:end`
+  socket event), fetch the actual logo image without exposing its domain
+  (`GET /game/logo-image/:token`, which proxies the Brandfetch CDN
+  request from the server instead of the browser), or resolve a "Signaler
+  ce logo" report (`POST /game/logo-reports` — despite the field still
+  being named `logoId` for schema-compat, it's a token now, not a raw
+  id). `GET /game/logos` (full catalog incl. `answer`/`domain`) still
+  exists and is intentionally unchanged — it's what the unauthenticated
+  `/logo-audit` QA tool reads, a different, deliberately-unauthenticated
+  consumer (see below); it is simply no longer used by actual gameplay.
+  This closes the "open DevTools → Network tab → read the answer in
+  plaintext" cheat that both modes had before (solo shipped the *entire*
+  answer key up front via `/game/logos`; multiplayer's `round:start`
+  socket frame carried the raw id/domain). What's still true, on
+  purpose: solo *scores* remain client-computed (only guess-correctness
+  moved server-side), and a determined player who scripts direct API
+  calls (rather than reading passively) can still call `/reveal`
+  immediately — see the "no rate limiting / proof-of-play" open issue
+  below, which this doesn't attempt to fix.
+- `game.ts`'s `roomView()` strips both `socketId` and `sessionId` from
+  the player list before broadcasting it to a room. Don't add `sessionId`
+  back there: `room:join` reconnects a socket to its player slot purely
+  by matching `sessionId` (see the sessionId gotcha above), so leaking
+  every player's `sessionId` to the rest of the room would let anyone
+  reconnect *as* another player (steal host status, submit guesses in
+  their name) — the frontend never reads another player's `sessionId`,
+  only its own from the store, so stripping it has no functional cost.
 - `lib/api-spec/openapi.yaml` is the source of truth for the REST API;
   `lib/api-zod` (Zod schemas) and `lib/api-client-react` (React Query
   hooks) are generated from it via
@@ -142,7 +180,11 @@ current list. Headline items at time of writing:
 3. `PixelatedLogo` reloads the image from the network on every
    `progress` tick (~10/s) with no cleanup of in-flight loads.
 4. No rate limiting or server-side proof-of-play anywhere (solo score
-   submission, guesses, room creation, logo reports).
+   submission, guesses, room creation, logo reports). Note this is
+   distinct from the "answer visible in the Network tab" cheat, which is
+   now fixed (see the round-token architecture note above) — this issue
+   is about scripted abuse of the (now-validating) endpoints themselves,
+   not passive reading.
 5. No automated tests and no CI workflow in this repo.
 
 ## User preferences

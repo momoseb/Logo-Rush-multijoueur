@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { getBrandfetchUrl } from '@/components/pixelated-logo';
+import { apiUrl } from '@/lib/api-base';
 
 type Logo = {
   id: string;
@@ -94,7 +95,9 @@ export default function LogoAudit() {
   });
 
   useEffect(() => {
-    fetch('/api/game/logos')
+    // This page fetches directly instead of using the generated API client,
+    // so it has to apply the API base URL itself (see lib/api-base.ts).
+    fetch(apiUrl('/api/game/logos'))
       .then((response) => {
         if (!response.ok) throw new Error('Catalogue indisponible');
         return response.json() as Promise<Logo[]>;

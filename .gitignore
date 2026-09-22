@@ -47,3 +47,11 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Vercel
+.vercel
+
+# Local secrets (DATABASE_URL, API keys, etc.) — never commit these
+.env
+.env.*
+!.env.example

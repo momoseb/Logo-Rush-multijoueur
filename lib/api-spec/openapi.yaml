@@ -109,6 +109,24 @@ paths:
                 maxItems: 5
                 items:
                   $ref: "#/components/schemas/SoloLeaderboardEntry"
+  /game/logo-reports:
+    post:
+      operationId: reportLogo
+      tags: [game]
+      summary: Flag a logo as unrecognizable or incorrect
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogoReportInput"
+      responses:
+        "201":
+          description: Report recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogoReportResult"
 components:
   schemas:
     HealthStatus:
@@ -202,3 +220,20 @@ components:
         roundDuration:
           type: integer
           enum: [15, 20, 30]
+    LogoReportInput:
+      type: object
+      required: [logoId, reason]
+      properties:
+        logoId:
+          type: string
+          minLength: 1
+          maxLength: 64
+        reason:
+          type: string
+          enum: [unknown, incorrect, other]
+    LogoReportResult:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean

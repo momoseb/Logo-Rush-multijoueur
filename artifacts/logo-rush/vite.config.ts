@@ -3,50 +3,16 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
-import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
-
-const rawPort = process.env.PORT;
-
-if (!rawPort) {
-  throw new Error(
-    'PORT environment variable is required but was not provided.',
-  );
-}
-
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-const basePath = process.env.BASE_PATH;
-
-if (!basePath) {
-  throw new Error(
-    'BASE_PATH environment variable is required but was not provided.',
-  );
-}
+// PORT/BASE_PATH only matter for `vite dev`/`vite preview` (a plain `vite
+// build`, as used by Vercel, ignores both). Default them instead of
+// requiring them, so the project builds in any environment.
+const port = Number(process.env.PORT) || 5173;
+const basePath = process.env.BASE_PATH || '/';
+const devApiProxyTarget = process.env.VITE_DEV_API_PROXY_TARGET || 'http://127.0.0.1:5000';
 
 export default defineConfig({
   base: basePath,
-  plugins: [
-    react(),
-    tailwindcss(),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== 'production' &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import('@replit/vite-plugin-cartographer').then((m) =>
-            m.cartographer({
-              root: path.resolve(import.meta.dirname, '..'),
-            }),
-          ),
-          await import('@replit/vite-plugin-dev-banner').then((m) =>
-            m.devBanner(),
-          ),
-        ]
-      : []),
-  ],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, 'src'),
@@ -71,6 +37,14 @@ export default defineConfig({
     allowedHosts: true,
     fs: {
       strict: true,
+    },
+    // Only relevant when the API isn't deployed separately (VITE_API_BASE_URL
+    // unset) — lets `vite dev` reach a locally-running api-server without a
+    // router in front of both services. Point it at a deployed backend via
+    // VITE_DEV_API_PROXY_TARGET if you'd rather not run one locally.
+    proxy: {
+      '/api': devApiProxyTarget,
+      '/socket.io': { target: devApiProxyTarget, ws: true },
     },
   },
   preview: {

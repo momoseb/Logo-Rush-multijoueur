@@ -11,6 +11,7 @@ import { ArrowLeft, Users, Trophy, Play, Check, X, Clock, Copy, Crown } from 'lu
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { PixelatedLogo } from '@/components/pixelated-logo';
+import { ReportLogoButton } from '@/components/report-logo-button';
 
 // Types derived from expected socket payloads
 type Player = { id: string; nickname: string; score: number; connected?: boolean; foundAt?: number; roundPoints?: number; hasGuessed?: boolean };
@@ -302,6 +303,7 @@ export default function Room() {
           <p className="text-sm text-muted-foreground font-semibold uppercase tracking-wider">Manche</p>
           <p className="text-2xl font-bold">{roundNumber} <span className="text-muted-foreground text-lg">/ {totalRounds}</span></p>
         </div>
+        {gameState === 'playing' && <ReportLogoButton logoId={currentLogo?.id} />}
         <div className="text-right">
           <p className="text-sm text-muted-foreground font-semibold uppercase tracking-wider">Temps</p>
           <p className={cn("text-3xl font-mono font-bold", timeLeft < 5 ? "text-destructive" : "text-primary")}>

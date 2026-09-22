@@ -10,6 +10,7 @@ import type { PublicRoomStatus } from './publicRoomStatus';
 export interface PublicRoom {
   code: string;
   name: string;
+  themeId: string;
   hostName: string;
   playerCount: number;
   maxPlayers: number;

@@ -19,6 +19,7 @@ export interface SoloScoreInput {
      * @maximum 20000
      */
   score: number;
+  themeId: string;
   roundCount: SoloScoreInputRoundCount;
   roundDuration: SoloScoreInputRoundDuration;
 }

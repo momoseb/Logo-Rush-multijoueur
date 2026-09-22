@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useParams } from 'wouter';
+import { useListThemes } from '@workspace/api-client-react';
 import { useGameStore } from '@/store/useGameStore';
 import { getSocket } from '@/lib/socket';
 import { Button } from '@/components/ui/button';
@@ -22,11 +23,13 @@ export default function Room() {
   const [, setLocation] = useLocation();
   const { nickname, sessionId, ensureSessionId, setNickname } = useGameStore();
   const { toast } = useToast();
+  const { data: themes } = useListThemes();
   const [localName, setLocalName] = useState('');
 
   const [gameState, setGameState] = useState<RoomState>('waiting');
   const [players, setPlayers] = useState<Player[]>([]);
   const [roomName, setRoomName] = useState('');
+  const [themeId, setThemeId] = useState('brands');
   const [hostId, setHostId] = useState('');
   const [myPlayerId, setMyPlayerId] = useState('');
   
@@ -70,6 +73,7 @@ export default function Room() {
 
     const handleRoomUpdate = (data: any) => {
       if (data.name) setRoomName(data.name);
+      if (data.themeId) setThemeId(data.themeId);
       if (data.hostId) setHostId(data.hostId);
       if (data.players) {
         // Transform Object to Array if needed, assuming backend sends array or map
@@ -168,10 +172,10 @@ export default function Room() {
     getSocket().emit('game:restart', { code });
   };
 
-  const updateRoomSettings = (nextRoundCount: number, nextRoundDuration: number) => {
+  const updateRoomSettings = (nextRoundCount: number, nextRoundDuration: number, nextThemeId = themeId) => {
     getSocket().emit(
       'room:settings',
-      { code, roundCount: nextRoundCount, roundDuration: nextRoundDuration },
+      { code, themeId: nextThemeId, roundCount: nextRoundCount, roundDuration: nextRoundDuration },
       (result: { ok: boolean; error?: string }) => {
         if (!result.ok) toast({ variant: 'destructive', description: result.error });
       },
@@ -300,6 +304,24 @@ export default function Room() {
                   <Play className="h-12 w-12 text-primary mb-4" />
                   <h3 className="font-bold text-lg mb-2">Prêt ?</h3>
                   <p className="text-sm text-muted-foreground mb-4">Réglez la partie puis lancez-la.</p>
+                  {themes && themes.length > 1 && (
+                    <div className="w-full mb-4">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Thème</p>
+                      <div className="grid grid-cols-2 gap-1">
+                        {themes.map((theme) => (
+                          <Button
+                            key={theme.id}
+                            type="button"
+                            size="sm"
+                            variant={themeId === theme.id ? 'default' : 'outline'}
+                            onClick={() => updateRoomSettings(totalRounds, roundDuration, theme.id)}
+                          >
+                            {theme.nameFr}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="w-full mb-4">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Manches</p>
                     <div className="grid grid-cols-4 gap-1">
@@ -385,7 +407,15 @@ export default function Room() {
                   exit={{ scale: 1.1, opacity: 0 }}
                   className="w-full h-full flex items-center justify-center relative p-8"
                 >
-                  <PixelatedLogo src={currentLogo.imageUrl} progress={revealProgress} reveal={gameState !== 'playing'} />
+                  <PixelatedLogo
+                    src={currentLogo.imageUrl}
+                    progress={revealProgress}
+                    reveal={gameState !== 'playing'}
+                    aspectRatio={(() => {
+                      const theme = themes?.find((t) => t.id === themeId);
+                      return theme ? { w: theme.aspectW, h: theme.aspectH } : undefined;
+                    })()}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>

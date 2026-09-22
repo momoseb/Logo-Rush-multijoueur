@@ -5,6 +5,7 @@ export const logoReportsTable = pgTable(
   {
     id: serial("id").primaryKey(),
     logoId: text("logo_id").notNull(),
+    themeId: text("theme_id").notNull().default("brands"),
     logoAnswer: text("logo_answer").notNull(),
     reason: text("reason").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

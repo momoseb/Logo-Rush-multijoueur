@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { useGetSoloLeaderboard } from '@workspace/api-client-react';
+import { useGetSoloLeaderboard, useListThemes } from '@workspace/api-client-react';
 import { ArrowLeft, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -11,9 +11,14 @@ type RoundDuration = 15 | 20 | 30;
 
 export default function Leaderboard() {
   const [, setLocation] = useLocation();
+  const { data: themes } = useListThemes();
+  const [themeId, setThemeId] = useState('brands');
+  useEffect(() => {
+    if (themes?.length && !themes.some((t) => t.id === themeId)) setThemeId(themes[0]!.id);
+  }, [themes, themeId]);
   const [roundCount, setRoundCount] = useState<RoundCount>(5);
   const [roundDuration, setRoundDuration] = useState<RoundDuration>(20);
-  const { data, isLoading, isError } = useGetSoloLeaderboard({ roundCount, roundDuration });
+  const { data, isLoading, isError } = useGetSoloLeaderboard({ themeId, roundCount, roundDuration });
 
   return (
     <div className="flex-1 w-full max-w-3xl mx-auto py-8 space-y-8">
@@ -29,6 +34,18 @@ export default function Leaderboard() {
       </div>
 
       <Card className="space-y-6 p-6 bg-card/50 backdrop-blur-md">
+        {themes && themes.length > 1 && (
+          <div>
+            <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Thème</p>
+            <div className="grid grid-cols-2 gap-2">
+              {themes.map((theme) => (
+                <Button key={theme.id} variant={themeId === theme.id ? 'default' : 'outline'} onClick={() => setThemeId(theme.id)}>
+                  {theme.nameFr}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
         <div>
           <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Nombre de manches</p>
           <div className="grid grid-cols-4 gap-2">

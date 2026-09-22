@@ -23,8 +23,14 @@ const io = new Server(server, {
   path: "/socket.io",
   cors: { origin: true, credentials: true },
 });
-attachGameServer(io);
 
-server.listen(port, () => {
-  logger.info({ port }, "Server listening");
-});
+attachGameServer(io)
+  .then(() => {
+    server.listen(port, () => {
+      logger.info({ port }, "Server listening");
+    });
+  })
+  .catch((error) => {
+    logger.error({ error }, "Failed to load game catalog at startup");
+    process.exit(1);
+  });

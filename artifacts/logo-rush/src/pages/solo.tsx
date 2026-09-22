@@ -4,6 +4,7 @@ import {
   getGetSoloLeaderboardQueryKey,
   useGetSoloLeaderboard,
   useListSoloRounds,
+  useListThemes,
   useRevealSoloRound,
   useSubmitSoloGuess,
   useSubmitSoloScore,
@@ -30,7 +31,13 @@ export default function Solo() {
   const [, setLocation] = useLocation();
   const nickname = useGameStore((state) => state.nickname);
   const queryClient = useQueryClient();
-  const { data: rounds, isLoading } = useListSoloRounds();
+  const { data: themes } = useListThemes();
+  const [themeId, setThemeId] = useState<string>('brands');
+  useEffect(() => {
+    if (themes?.length && !themes.some((t) => t.id === themeId)) setThemeId(themes[0]!.id);
+  }, [themes, themeId]);
+  const currentTheme = themes?.find((t) => t.id === themeId);
+  const { data: rounds, isLoading } = useListSoloRounds({ themeId });
 
   const [gameState, setGameState] = useState<GameState>('setup');
   const [currentRound, setCurrentRound] = useState(0);
@@ -53,7 +60,7 @@ export default function Solo() {
   const startTimeRef = useRef<number>(0);
   const guessInputRef = useRef<HTMLInputElement>(null);
   const submittedResultRef = useRef(false);
-  const leaderboardParams = { roundCount, roundDuration };
+  const leaderboardParams = { themeId, roundCount, roundDuration };
   const { data: leaderboard, isLoading: isLeaderboardLoading, isError: isLeaderboardError } = useGetSoloLeaderboard(leaderboardParams);
   const submitScore = useSubmitSoloScore({
     mutation: {
@@ -180,11 +187,12 @@ export default function Solo() {
       data: {
         nickname,
         score,
+        themeId,
         roundCount,
         roundDuration,
       },
     });
-  }, [gameState, nickname, roundCount, roundDuration, score]);
+  }, [gameState, nickname, themeId, roundCount, roundDuration, score]);
 
   if (isLoading) {
     return (
@@ -205,6 +213,18 @@ export default function Solo() {
           <p className="text-xl text-muted-foreground">Configurez votre défi avant de jouer.</p>
         </div>
         <Card className="w-full max-w-xl space-y-6 p-6 bg-card/50 backdrop-blur-md">
+          {themes && themes.length > 1 && (
+            <div>
+              <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Thème</p>
+              <div className="grid grid-cols-2 gap-2">
+                {themes.map((theme) => (
+                  <Button key={theme.id} type="button" variant={themeId === theme.id ? 'default' : 'outline'} onClick={() => setThemeId(theme.id)}>
+                    {theme.nameFr}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
           <div>
             <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Nombre de manches</p>
             <div className="grid grid-cols-4 gap-2">
@@ -290,7 +310,12 @@ export default function Solo() {
               exit={{ scale: 1.1, opacity: 0 }}
               className="w-full h-full flex items-center justify-center relative"
             >
-              <PixelatedLogo src={currentLogo.imageUrl} progress={revealProgress} reveal={gameState !== 'playing'} />
+              <PixelatedLogo
+                src={currentLogo.imageUrl}
+                progress={revealProgress}
+                reveal={gameState !== 'playing'}
+                aspectRatio={currentTheme ? { w: currentTheme.aspectW, h: currentTheme.aspectH } : undefined}
+              />
             </motion.div>
           )}
         </AnimatePresence>

@@ -1,10 +1,13 @@
 import { Router, type IRouter } from "express";
 import { and, asc, desc, eq } from "drizzle-orm";
-import { db, logoReportsTable, soloScoresTable } from "@workspace/db";
+import { db, logoReportsTable, soloScoresTable, type CatalogItem } from "@workspace/db";
 import {
   GetSoloLeaderboardQueryParams,
   GetSoloLeaderboardResponse,
+  ListSoloLogosResponse,
+  ListSoloRoundsQueryParams,
   ListSoloRoundsResponse,
+  ListThemesResponse,
   ReportLogoBody,
   ReportLogoResponse,
   RevealSoloRoundBody,
@@ -14,66 +17,94 @@ import {
   SubmitSoloScoreBody,
   SubmitSoloScoreResponse,
 } from "@workspace/api-zod";
-import { clean, getPublicRooms, getStats, logos } from "../game";
+import { findCatalogItem, getCatalogItems, getPublicRooms, getStats, getThemeById, getThemes, matchesGuess, pickAnswer } from "../game";
+import { resolveImageUrl } from "../image-providers";
 import { signLogoToken, verifyLogoToken } from "../logo-token";
 import { logger } from "../lib/logger";
 
 const gameRouter: IRouter = Router();
 
-const BRANDFETCH_CDN_CLIENT_ID = process.env.BRANDFETCH_CLIENT_ID || "1idke8AlkDn4BHhX1fs";
-
-function findLogoByToken(token: unknown) {
-  const logoId = verifyLogoToken(token);
-  return logoId ? logos.find((candidate) => candidate.id === logoId) : undefined;
+function findItemByToken(token: unknown): { item: CatalogItem; themeId: string } | undefined {
+  const payload = verifyLogoToken(token);
+  if (!payload) return undefined;
+  const item = findCatalogItem(payload.itemId);
+  return item ? { item, themeId: payload.themeId } : undefined;
 }
+
+const asLocale = (value: unknown): "fr" | "en" => (value === "en" ? "en" : "fr");
 
 gameRouter.get("/game/stats", (_req, res) => res.json(getStats()));
 gameRouter.get("/game/rooms", (_req, res) => res.json(getPublicRooms()));
-gameRouter.get("/game/logos", (_req, res) => res.json(logos));
+gameRouter.get("/game/themes", (_req, res) => res.json(ListThemesResponse.parse(getThemes())));
+
+// Full catalog dump across every theme: only the internal, unauthenticated
+// /logo-audit QA tool reads this — a different, deliberately-unauthenticated
+// consumer, never used by actual gameplay. See AGENTS.md.
+gameRouter.get("/game/logos", (_req, res) => {
+  const items = getCatalogItems().map((item) => ({
+    id: item.id,
+    themeId: item.themeId,
+    answerFr: item.answerFr,
+    answerEn: item.answerEn,
+    aliasesFr: item.aliasesFr,
+    aliasesEn: item.aliasesEn,
+    category: item.category ?? undefined,
+    difficulty: item.difficulty,
+    imageUrl: `logotoken://${signLogoToken({ itemId: item.id, themeId: item.themeId })}`,
+  }));
+  res.json(ListSoloLogosResponse.parse(items));
+});
 
 // Playable solo round pool: unlike /game/logos above (an internal catalog
 // dump used by the unauthenticated /logo-audit QA tool), this never
 // includes `answer`/`aliases` — the id itself is an answer slug, so even the
 // id is replaced by an opaque per-round token. See /game/solo/guess and
 // /game/solo/reveal, which resolve the token server-side.
-gameRouter.get("/game/solo/logos", (_req, res) => {
-  const rounds = logos.map((logo) => {
-    const token = signLogoToken(logo.id);
-    return { token, category: logo.category, difficulty: logo.difficulty, imageUrl: `logotoken://${token}` };
-  });
+gameRouter.get("/game/solo/logos", (req, res): void => {
+  const params = ListSoloRoundsQueryParams.safeParse({ themeId: req.query.themeId });
+  if (!params.success) {
+    res.status(400).json({ error: "Thème invalide." });
+    return;
+  }
+  const rounds = getCatalogItems()
+    .filter((item) => item.themeId === params.data.themeId)
+    .map((item) => {
+      const token = signLogoToken({ itemId: item.id, themeId: item.themeId });
+      return { token, themeId: item.themeId, category: item.category ?? undefined, difficulty: item.difficulty, imageUrl: `logotoken://${token}` };
+    });
   res.json(ListSoloRoundsResponse.parse(rounds));
 });
 
 gameRouter.post("/game/solo/guess", (req, res): void => {
   const input = SubmitSoloGuessBody.safeParse(req.body);
-  const logo = input.success ? findLogoByToken(input.data.token) : undefined;
-  if (!input.success || !logo) {
+  const found = input.success ? findItemByToken(input.data.token) : undefined;
+  if (!input.success || !found) {
     res.status(400).json({ error: "Manche invalide." });
     return;
   }
-  const correct = [logo.answer, ...logo.aliases].some((answer) => clean(answer) === clean(input.data.guess));
-  res.json(SubmitSoloGuessResponse.parse(correct ? { correct: true, answer: logo.answer } : { correct: false }));
+  const correct = matchesGuess(found.item, input.data.guess);
+  res.json(SubmitSoloGuessResponse.parse(correct ? { correct: true, answer: pickAnswer(found.item, asLocale(input.data.locale)) } : { correct: false }));
 });
 
 gameRouter.post("/game/solo/reveal", (req, res): void => {
   const input = RevealSoloRoundBody.safeParse(req.body);
-  const logo = input.success ? findLogoByToken(input.data.token) : undefined;
-  if (!input.success || !logo) {
+  const found = input.success ? findItemByToken(input.data.token) : undefined;
+  if (!input.success || !found) {
     res.status(400).json({ error: "Manche invalide." });
     return;
   }
-  res.json(RevealSoloRoundResponse.parse({ answer: logo.answer }));
+  res.json(RevealSoloRoundResponse.parse({ answer: pickAnswer(found.item, asLocale(input.data.locale)) }));
 });
 
 gameRouter.get("/game/logo-image/:token", async (req, res): Promise<void> => {
-  const logo = findLogoByToken(req.params.token);
-  const domain = logo?.imageUrl.startsWith("brandfetch://") ? logo.imageUrl.slice("brandfetch://".length) : undefined;
-  if (!domain) {
+  const found = findItemByToken(req.params.token);
+  const theme = found && getThemeById(found.item.themeId);
+  if (!found || !theme) {
     res.status(404).end();
     return;
   }
   const fallback = req.query.fallback === "1" || req.query.fallback === "true";
-  const upstreamUrl = `https://cdn.brandfetch.io/domain/${encodeURIComponent(domain)}/w/512/h/512/type/icon${fallback ? "/fallback/lettermark" : ""}?c=${encodeURIComponent(BRANDFETCH_CDN_CLIENT_ID)}`;
+  const upstreamUrl = resolveImageUrl(theme, found.item.imageRef, fallback);
   try {
     const upstream = await fetch(upstreamUrl);
     if (!upstream.ok || !upstream.body) {
@@ -92,6 +123,7 @@ gameRouter.get("/game/logo-image/:token", async (req, res): Promise<void> => {
 
 gameRouter.get("/game/solo-leaderboard", async (req, res): Promise<void> => {
   const params = GetSoloLeaderboardQueryParams.safeParse({
+    themeId: req.query.themeId,
     roundCount: Number(req.query.roundCount),
     roundDuration: Number(req.query.roundDuration),
   });
@@ -104,6 +136,7 @@ gameRouter.get("/game/solo-leaderboard", async (req, res): Promise<void> => {
     .from(soloScoresTable)
     .where(
       and(
+        eq(soloScoresTable.themeId, params.data.themeId),
         eq(soloScoresTable.roundCount, params.data.roundCount),
         eq(soloScoresTable.roundDuration, params.data.roundDuration),
       ),
@@ -122,6 +155,7 @@ gameRouter.post("/game/solo-leaderboard", async (req, res): Promise<void> => {
   await db.insert(soloScoresTable).values({
     nickname: input.data.nickname.trim(),
     score: input.data.score,
+    themeId: input.data.themeId,
     roundCount: input.data.roundCount,
     roundDuration: input.data.roundDuration,
   });
@@ -130,6 +164,7 @@ gameRouter.post("/game/solo-leaderboard", async (req, res): Promise<void> => {
     .from(soloScoresTable)
     .where(
       and(
+        eq(soloScoresTable.themeId, input.data.themeId),
         eq(soloScoresTable.roundCount, input.data.roundCount),
         eq(soloScoresTable.roundDuration, input.data.roundDuration),
       ),
@@ -143,14 +178,15 @@ gameRouter.post("/game/logo-reports", async (req, res): Promise<void> => {
   // `logoId` here is actually a signed round token (see logo-token.ts), not
   // a raw catalog id — the player-facing report button never sees real ids.
   const input = ReportLogoBody.safeParse(req.body);
-  const logo = input.success ? findLogoByToken(input.data.logoId) : undefined;
-  if (!input.success || !logo) {
+  const found = input.success ? findItemByToken(input.data.logoId) : undefined;
+  if (!input.success || !found) {
     res.status(400).json({ error: "Signalement invalide." });
     return;
   }
   await db.insert(logoReportsTable).values({
-    logoId: logo.id,
-    logoAnswer: logo.answer,
+    logoId: found.item.id,
+    themeId: found.item.themeId,
+    logoAnswer: pickAnswer(found.item, "fr"),
     reason: input.data.reason,
   });
   res.status(201).json(ReportLogoResponse.parse({ ok: true }));

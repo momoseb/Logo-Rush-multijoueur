@@ -6,6 +6,10 @@ type PixelatedLogoProps = {
   progress: number;
   reveal?: boolean;
   alt?: string;
+  /** Theme-dependent aspect ratio (e.g. 1/1 for logos and crests, 2/3 for
+   * movie posters). Defaults to square so existing brand/club callers are
+   * unaffected. */
+  aspectRatio?: { w: number; h: number };
   onStatusChange?: (status: 'loaded' | 'missing' | 'lettermark') => void;
 };
 
@@ -23,9 +27,13 @@ export function getBrandfetchUrl(src: string, fallback = true) {
   const fallbackPath = fallback ? '/fallback/lettermark' : '';
   return `https://cdn.brandfetch.io/domain/${encodeURIComponent(src.slice('brandfetch://'.length))}/w/512/h/512/type/icon${fallbackPath}?c=${encodeURIComponent(clientId || '')}`;
 }
-export function PixelatedLogo({ src, progress, reveal = false, alt = 'Marque à deviner', onStatusChange }: PixelatedLogoProps) {
+export function PixelatedLogo({ src, progress, reveal = false, alt = 'Marque à deviner', aspectRatio = { w: 1, h: 1 }, onStatusChange }: PixelatedLogoProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState<'loading' | 'loaded' | 'missing' | 'lettermark'>('loading');
+
+  const longEdge = 512;
+  const width = aspectRatio.w >= aspectRatio.h ? longEdge : Math.round((longEdge * aspectRatio.w) / aspectRatio.h);
+  const height = aspectRatio.h >= aspectRatio.w ? longEdge : Math.round((longEdge * aspectRatio.h) / aspectRatio.w);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -36,20 +44,21 @@ export function PixelatedLogo({ src, progress, reveal = false, alt = 'Marque à 
     image.onload = () => {
       setStatus('loaded');
       onStatusChange?.('loaded');
-      const size = 512;
-      canvas.width = size;
-      canvas.height = size;
+      canvas.width = width;
+      canvas.height = height;
       const normalized = Math.min(1, Math.max(0, progress));
-      const resolution = reveal ? size : Math.round(8 + Math.pow(normalized, 2.2) * (size - 8));
+      const longEdgeResolution = reveal ? longEdge : Math.round(8 + Math.pow(normalized, 2.2) * (longEdge - 8));
+      const bufferWidth = Math.max(1, Math.round((longEdgeResolution * width) / longEdge));
+      const bufferHeight = Math.max(1, Math.round((longEdgeResolution * height) / longEdge));
       const buffer = document.createElement('canvas');
-      buffer.width = resolution;
-      buffer.height = resolution;
+      buffer.width = bufferWidth;
+      buffer.height = bufferHeight;
       const bufferContext = buffer.getContext('2d');
       if (!bufferContext) return;
-      bufferContext.drawImage(image, 0, 0, resolution, resolution);
-      context.clearRect(0, 0, size, size);
+      bufferContext.drawImage(image, 0, 0, bufferWidth, bufferHeight);
+      context.clearRect(0, 0, width, height);
       context.imageSmoothingEnabled = false;
-      context.drawImage(buffer, 0, 0, resolution, resolution, 0, 0, size, size);
+      context.drawImage(buffer, 0, 0, bufferWidth, bufferHeight, 0, 0, width, height);
     };
     image.onerror = () => {
       if (!src.startsWith('brandfetch://') && !src.startsWith('logotoken://')) {
@@ -64,20 +73,19 @@ export function PixelatedLogo({ src, progress, reveal = false, alt = 'Marque à 
       image.onload = () => {
         setStatus('lettermark');
         onStatusChange?.('lettermark');
-        const size = 512;
-        canvas.width = size;
-        canvas.height = size;
-        context.clearRect(0, 0, size, size);
-        context.drawImage(image, 0, 0, size, size);
+        canvas.width = width;
+        canvas.height = height;
+        context.clearRect(0, 0, width, height);
+        context.drawImage(image, 0, 0, width, height);
       };
       image.src = getBrandfetchUrl(src, true);
     };
     setStatus('loading');
     image.src = getBrandfetchUrl(src, false);
-  }, [src, progress, reveal, onStatusChange]);
+  }, [src, progress, reveal, width, height, onStatusChange]);
 
   return (
-    <div className="relative h-full w-full max-h-[32rem] max-w-[32rem]">
+    <div className="relative h-full w-full" style={{ maxHeight: '32rem', maxWidth: `${32 * (width / longEdge)}rem`, aspectRatio: `${aspectRatio.w} / ${aspectRatio.h}` }}>
       <canvas ref={canvasRef} role="img" aria-label={alt} className="h-full w-full object-contain" />
       {status === 'missing' && (
         <div className="absolute inset-0 flex items-center justify-center rounded-xl border border-destructive/40 bg-destructive/10 text-sm font-semibold text-destructive">

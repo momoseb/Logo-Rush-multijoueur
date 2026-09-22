@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { useListPublicRooms, getListPublicRoomsQueryKey } from '@workspace/api-client-react';
+import { useListPublicRooms, getListPublicRoomsQueryKey, useListThemes } from '@workspace/api-client-react';
 import { useGameStore } from '@/store/useGameStore';
 import { getSocket } from '@/lib/socket';
 import { Button } from '@/components/ui/button';
@@ -14,11 +14,16 @@ export default function Multiplayer() {
   const [, setLocation] = useLocation();
   const { nickname, sessionId, ensureSessionId } = useGameStore();
   const { data: rooms, isLoading } = useListPublicRooms({ query: { queryKey: getListPublicRoomsQueryKey(), refetchInterval: 5000 } });
+  const { data: themes } = useListThemes();
   const { toast } = useToast();
 
-  
+
   const [joinCode, setJoinCode] = useState('');
   const [newRoomName, setNewRoomName] = useState('');
+  const [newRoomThemeId, setNewRoomThemeId] = useState('brands');
+  useEffect(() => {
+    if (themes?.length && !themes.some((t) => t.id === newRoomThemeId)) setNewRoomThemeId(themes[0]!.id);
+  }, [themes, newRoomThemeId]);
   const [newRoomRoundCount, setNewRoomRoundCount] = useState(5);
   const [newRoomRoundDuration, setNewRoomRoundDuration] = useState(20);
   const [isCreating, setIsCreating] = useState(false);
@@ -36,10 +41,11 @@ export default function Multiplayer() {
     setIsCreating(true);
     
     const socket = getSocket();
-    socket.emit('room:create', { 
+    socket.emit('room:create', {
       name: newRoomName.trim(),
       nickname,
       sessionId,
+      themeId: newRoomThemeId,
       isPublic: true,
       maxPlayers: 10,
       roundCount: newRoomRoundCount,
@@ -100,6 +106,11 @@ export default function Multiplayer() {
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Users className="h-4 w-4" />
                         {room.playerCount} / {room.maxPlayers} joueurs
+                        {themes && themes.length > 1 && (
+                          <span className="text-xs bg-secondary/20 text-secondary px-2 py-0.5 rounded-md">
+                            {themes.find((t) => t.id === room.themeId)?.nameFr ?? room.themeId}
+                          </span>
+                        )}
                       </div>
                       <Button 
                         size="sm"
@@ -153,7 +164,7 @@ export default function Multiplayer() {
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium mb-1 block">Nom du salon</label>
-                    <Input 
+                    <Input
                       value={newRoomName}
                       onChange={(e) => setNewRoomName(e.target.value)}
                       placeholder="Le repaire des boss"
@@ -161,6 +172,18 @@ export default function Multiplayer() {
                       data-testid="input-room-name"
                     />
                   </div>
+                  {themes && themes.length > 1 && (
+                    <div>
+                      <p className="mb-2 text-sm font-medium">Thème</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {themes.map((theme) => (
+                          <Button key={theme.id} type="button" variant={newRoomThemeId === theme.id ? 'default' : 'outline'} onClick={() => setNewRoomThemeId(theme.id)}>
+                            {theme.nameFr}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <p className="mb-2 text-sm font-medium">Nombre de manches</p>
                     <div className="grid grid-cols-4 gap-2">

@@ -26,12 +26,21 @@ export const PublicRoomStatus = {
 export interface PublicRoom {
   code: string;
   name: string;
+  themeId: string;
   hostName: string;
   playerCount: number;
   maxPlayers: number;
   roundCount: number;
   roundDuration: number;
   status: PublicRoomStatus;
+}
+
+export interface Theme {
+  id: string;
+  nameFr: string;
+  nameEn: string;
+  aspectW: number;
+  aspectH: number;
 }
 
 export type LogoDifficulty = typeof LogoDifficulty[keyof typeof LogoDifficulty];
@@ -45,9 +54,12 @@ export const LogoDifficulty = {
 
 export interface Logo {
   id: string;
-  answer: string;
-  aliases: string[];
-  category: string;
+  themeId: string;
+  answerFr: string;
+  answerEn: string;
+  aliasesFr: string[];
+  aliasesEn: string[];
+  category?: string;
   difficulty: LogoDifficulty;
   imageUrl: string;
 }
@@ -56,6 +68,7 @@ export interface SoloLeaderboardEntry {
   id: number;
   nickname: string;
   score: number;
+  themeId: string;
   roundCount: number;
   roundDuration: number;
   createdAt: string;
@@ -91,6 +104,7 @@ export interface SoloScoreInput {
      * @maximum 20000
      */
   score: number;
+  themeId: string;
   roundCount: SoloScoreInputRoundCount;
   roundDuration: SoloScoreInputRoundDuration;
 }
@@ -106,10 +120,19 @@ export const SoloRoundDifficulty = {
 
 export interface SoloRound {
   token: string;
-  category: string;
+  themeId: string;
+  category?: string;
   difficulty: SoloRoundDifficulty;
   imageUrl: string;
 }
+
+export type SoloGuessInputLocale = typeof SoloGuessInputLocale[keyof typeof SoloGuessInputLocale];
+
+
+export const SoloGuessInputLocale = {
+  fr: 'fr',
+  en: 'en',
+} as const;
 
 export interface SoloGuessInput {
   /** @minLength 1 */
@@ -119,6 +142,7 @@ export interface SoloGuessInput {
      * @maxLength 80
      */
   guess: string;
+  locale?: SoloGuessInputLocale;
 }
 
 export interface SoloGuessResult {
@@ -126,9 +150,18 @@ export interface SoloGuessResult {
   answer?: string;
 }
 
+export type SoloRevealInputLocale = typeof SoloRevealInputLocale[keyof typeof SoloRevealInputLocale];
+
+
+export const SoloRevealInputLocale = {
+  fr: 'fr',
+  en: 'en',
+} as const;
+
 export interface SoloRevealInput {
   /** @minLength 1 */
   token: string;
+  locale?: SoloRevealInputLocale;
 }
 
 export interface SoloRevealResult {
@@ -158,6 +191,7 @@ export interface LogoReportResult {
 }
 
 export type GetSoloLeaderboardParams = {
+themeId: string;
 roundCount: GetSoloLeaderboardRoundCount;
 roundDuration: GetSoloLeaderboardRoundDuration;
 };
@@ -180,4 +214,8 @@ export const GetSoloLeaderboardRoundDuration = {
   NUMBER_20: 20,
   NUMBER_30: 30,
 } as const;
+
+export type ListSoloRoundsParams = {
+themeId: string;
+};
 

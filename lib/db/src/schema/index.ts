@@ -19,3 +19,5 @@
 
 export * from "./solo-scores";
 export * from "./logo-reports";
+export * from "./themes";
+export * from "./catalog-items";

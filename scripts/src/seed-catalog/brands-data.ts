@@ -1,20 +1,80 @@
-type CatalogLogo = {
+// One-time migration source data: the former hardcoded catalog from
+// artifacts/api-server/src/game.ts (the 50 hand-curated entries) and
+// artifacts/api-server/src/logo-catalog.ts (`brandSeeds`, ~354 entries),
+// moved here so seed-brands.ts can load them into `catalog_items` under
+// themeId "brands". The originals are deleted once the migration has run —
+// see AGENTS.md / the multi-theme plan for why the catalog now lives in
+// the database instead of a hardcoded array.
+
+export type BrandRow = {
   id: string;
   domain: string;
   answer: string;
   aliases: string[];
   category: string;
   difficulty: "easy" | "medium" | "hard";
-  imageUrl: string;
 };
-
-type BrandSeed = readonly [domain: string, answer: string, aliases?: readonly string[]];
 
 export const logoDomainCorrections: Readonly<Record<string, string>> = {
   "burgerking.com": "burgerking.fr",
 };
 
 export const correctedLogoDomain = (domain: string) => logoDomainCorrections[domain] ?? domain;
+
+export const curatedBrands: BrandRow[] = [
+  { id: "apple", domain: "apple.com", answer: "Apple", aliases: ["apple inc"], category: "technologie", difficulty: "easy" },
+  { id: "nike", domain: "nike.com", answer: "Nike", aliases: ["nike inc"], category: "sport", difficulty: "easy" },
+  { id: "cocacola", domain: "coca-cola.com", answer: "Coca-Cola", aliases: ["coca cola", "cocacola", "coke"], category: "alimentation", difficulty: "easy" },
+  { id: "mcdonalds", domain: "mcdonalds.com", answer: "McDonald's", aliases: ["mcdonalds", "macdonalds", "mcdo"], category: "alimentation", difficulty: "easy" },
+  { id: "adidas", domain: "adidas.com", answer: "Adidas", aliases: [], category: "sport", difficulty: "easy" },
+  { id: "tesla", domain: "tesla.com", answer: "Tesla", aliases: ["tesla motors"], category: "automobile", difficulty: "easy" },
+  { id: "spotify", domain: "spotify.com", answer: "Spotify", aliases: [], category: "technologie", difficulty: "easy" },
+  { id: "netflix", domain: "netflix.com", answer: "Netflix", aliases: [], category: "cinéma", difficulty: "easy" },
+  { id: "amazon", domain: "amazon.com", answer: "Amazon", aliases: ["amazon.com"], category: "technologie", difficulty: "medium" },
+  { id: "microsoft", domain: "microsoft.com", answer: "Microsoft", aliases: ["microsoft corporation"], category: "technologie", difficulty: "easy" },
+  { id: "google", domain: "google.com", answer: "Google", aliases: [], category: "technologie", difficulty: "easy" },
+  { id: "samsung", domain: "samsung.com", answer: "Samsung", aliases: ["samsung electronics"], category: "technologie", difficulty: "medium" },
+  { id: "lego", domain: "lego.com", answer: "LEGO", aliases: ["the lego group"], category: "jeux vidéo", difficulty: "easy" },
+  { id: "pepsi", domain: "pepsi.com", answer: "Pepsi", aliases: ["pepsi cola"], category: "alimentation", difficulty: "medium" },
+  { id: "starbucks", domain: "starbucks.com", answer: "Starbucks", aliases: ["starbucks coffee"], category: "alimentation", difficulty: "medium" },
+  { id: "ferrari", domain: "ferrari.com", answer: "Ferrari", aliases: ["scuderia ferrari"], category: "automobile", difficulty: "medium" },
+  { id: "bmw", domain: "bmw.com", answer: "BMW", aliases: ["bayerische motoren werke"], category: "automobile", difficulty: "easy" },
+  { id: "mercedes", domain: "mercedes-benz.com", answer: "Mercedes-Benz", aliases: ["mercedes", "mercedes benz"], category: "automobile", difficulty: "easy" },
+  { id: "audi", domain: "audi.com", answer: "Audi", aliases: [], category: "automobile", difficulty: "easy" },
+  { id: "volkswagen", domain: "volkswagen.com", answer: "Volkswagen", aliases: ["vw"], category: "automobile", difficulty: "easy" },
+  { id: "toyota", domain: "toyota.com", answer: "Toyota", aliases: [], category: "automobile", difficulty: "easy" },
+  { id: "honda", domain: "honda.com", answer: "Honda", aliases: [], category: "automobile", difficulty: "medium" },
+  { id: "ford", domain: "ford.com", answer: "Ford", aliases: ["ford motor company"], category: "automobile", difficulty: "easy" },
+  { id: "porsche", domain: "porsche.com", answer: "Porsche", aliases: [], category: "automobile", difficulty: "medium" },
+  { id: "renault", domain: "renault.co.uk", answer: "Renault", aliases: [], category: "automobile", difficulty: "easy" },
+  { id: "louisvuitton", domain: "louisvuitton.com", answer: "Louis Vuitton", aliases: ["louis vuitton", "lv"], category: "mode", difficulty: "easy" },
+  { id: "chanel", domain: "chanel.com", answer: "Chanel", aliases: [], category: "mode", difficulty: "easy" },
+  { id: "gucci", domain: "gucci.com", answer: "Gucci", aliases: [], category: "mode", difficulty: "easy" },
+  { id: "ikea", domain: "ikea.com", answer: "IKEA", aliases: [], category: "distribution", difficulty: "easy" },
+  { id: "walmart", domain: "walmart.com", answer: "Walmart", aliases: ["wal-mart"], category: "distribution", difficulty: "medium" },
+  { id: "disney", domain: "disney.com", answer: "Disney", aliases: ["walt disney", "the walt disney company"], category: "divertissement", difficulty: "easy" },
+  { id: "youtube", domain: "youtube.com", answer: "YouTube", aliases: ["you tube"], category: "technologie", difficulty: "easy" },
+  { id: "instagram", domain: "instagram.com", answer: "Instagram", aliases: ["insta"], category: "technologie", difficulty: "easy" },
+  { id: "tiktok", domain: "tiktok.com", answer: "TikTok", aliases: ["tik tok"], category: "technologie", difficulty: "easy" },
+  { id: "airbnb", domain: "airbnb.com", answer: "Airbnb", aliases: ["air bnb"], category: "voyage", difficulty: "medium" },
+  { id: "uber", domain: "uber.com", answer: "Uber", aliases: [], category: "transport", difficulty: "easy" },
+  { id: "paypal", domain: "paypal.com", answer: "PayPal", aliases: ["pay pal"], category: "finance", difficulty: "easy" },
+  { id: "visa", domain: "visa.com", answer: "Visa", aliases: [], category: "finance", difficulty: "easy" },
+  { id: "mastercard", domain: "mastercard.com", answer: "Mastercard", aliases: ["master card"], category: "finance", difficulty: "easy" },
+  { id: "intel", domain: "intel.com", answer: "Intel", aliases: ["intel corporation"], category: "technologie", difficulty: "medium" },
+  { id: "playstation", domain: "playstation.com", answer: "PlayStation", aliases: ["play station", "ps"], category: "jeux vidéo", difficulty: "easy" },
+  { id: "xbox", domain: "xbox.com", answer: "Xbox", aliases: ["x box"], category: "jeux vidéo", difficulty: "easy" },
+  { id: "nintendo", domain: "nintendo.com", answer: "Nintendo", aliases: [], category: "jeux vidéo", difficulty: "easy" },
+  { id: "kfc", domain: "kfc.com", answer: "KFC", aliases: ["kentucky fried chicken"], category: "alimentation", difficulty: "easy" },
+  { id: "burgerking", domain: correctedLogoDomain("burgerking.com"), answer: "Burger King", aliases: ["burgerking", "bk"], category: "alimentation", difficulty: "easy" },
+  { id: "redbull", domain: "redbull.com", answer: "Red Bull", aliases: ["redbull"], category: "alimentation", difficulty: "easy" },
+  { id: "lacoste", domain: "lacoste.com", answer: "Lacoste", aliases: [], category: "mode", difficulty: "easy" },
+  { id: "puma", domain: "puma.com", answer: "Puma", aliases: [], category: "sport", difficulty: "easy" },
+  { id: "shell", domain: "shell.com", answer: "Shell", aliases: ["royal dutch shell"], category: "énergie", difficulty: "medium" },
+  { id: "rolex", domain: "rolex.com", answer: "Rolex", aliases: [], category: "mode", difficulty: "medium" },
+];
+
+type BrandSeed = readonly [domain: string, answer: string, aliases?: readonly string[]];
 
 const brandSeeds: BrandSeed[] = [
   ["abercrombie.com", "Abercrombie & Fitch", ["abercrombie"]],
@@ -376,17 +436,13 @@ const brandSeeds: BrandSeed[] = [
 const idFromDomain = (domain: string) =>
   domain.replace(/^www\./, "").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "");
 
-export const additionalLogos: CatalogLogo[] = brandSeeds.map(
-  ([sourceDomain, answer, aliases = []]) => {
-    const domain = correctedLogoDomain(sourceDomain);
-    return {
-      id: idFromDomain(sourceDomain),
-      domain,
-      answer,
-      aliases: [...aliases],
-      category: "marques",
-      difficulty: "medium",
-      imageUrl: `brandfetch://${domain}`,
-    };
-  },
-);
+export const additionalBrands: BrandRow[] = brandSeeds.map(([sourceDomain, answer, aliases = []]) => ({
+  id: idFromDomain(sourceDomain),
+  domain: correctedLogoDomain(sourceDomain),
+  answer,
+  aliases: [...aliases],
+  category: "marques",
+  difficulty: "medium",
+}));
+
+export const allBrands: BrandRow[] = [...curatedBrands, ...additionalBrands];

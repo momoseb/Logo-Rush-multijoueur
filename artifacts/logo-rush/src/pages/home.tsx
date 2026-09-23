@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
-import { Gamepad2, Users, Trophy, ChevronRight, Activity, Medal, ShieldCheck } from 'lucide-react';
+import { Gamepad2, Users, Trophy, ChevronRight, Activity, Medal, ShieldCheck, Info } from 'lucide-react';
 
 export default function Home() {
   const { t } = useTranslation();
@@ -155,10 +155,16 @@ export default function Home() {
           <span>{statsLoading ? '...' : t('home.gamesInProgress', { count: stats?.gamesInProgress || 0 })}</span>
         </div>
       </div>
-      <Button variant="ghost" size="sm" onClick={() => setLocation('/logo-audit')} data-testid="button-open-logo-audit">
-        <ShieldCheck className="h-4 w-4" />
-        {t('home.logoAudit')}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="sm" onClick={() => setLocation('/logo-audit')} data-testid="button-open-logo-audit">
+          <ShieldCheck className="h-4 w-4" />
+          {t('home.logoAudit')}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => setLocation('/about')} data-testid="button-open-about">
+          <Info className="h-4 w-4" />
+          {t('about.title')}
+        </Button>
+      </div>
     </motion.div>
   );
 }

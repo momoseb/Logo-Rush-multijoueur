@@ -39,6 +39,7 @@ export interface Theme {
   id: string;
   nameFr: string;
   nameEn: string;
+  imageProvider: string;
   aspectW: number;
   aspectH: number;
 }

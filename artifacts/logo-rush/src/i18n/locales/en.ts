@@ -115,6 +115,10 @@ export default {
     reported: 'Reported',
     action: 'Unrecognizable logo?',
   },
+  about: {
+    title: 'About',
+    intro: "Logo Rush relies on third-party APIs for each theme's images. Here are their sources, as required by their terms of use.",
+  },
   notFound: {
     title: 'Page not found',
     description: "The logo you're looking for doesn't exist or the page has moved.",

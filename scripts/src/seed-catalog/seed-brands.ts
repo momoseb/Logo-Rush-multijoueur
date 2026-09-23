@@ -7,21 +7,26 @@
 import { db, pool, themesTable, catalogItemsTable, makeCatalogItemId } from "@workspace/db";
 import { allBrands } from "./brands-data";
 
-const themes = [
-  { id: "brands", nameFr: "Marques", nameEn: "Brands", imageProvider: "brandfetch", aspectW: 1, aspectH: 1, enabled: true, sortOrder: 0 },
-  { id: "football-clubs", nameFr: "Clubs de foot", nameEn: "Football clubs", imageProvider: "thesportsdb", aspectW: 1, aspectH: 1, enabled: false, sortOrder: 1 },
+const brandsTheme = { id: "brands", nameFr: "Marques", nameEn: "Brands", imageProvider: "brandfetch", aspectW: 1, aspectH: 1, enabled: true, sortOrder: 0 };
+
+// Placeholder rows for the 3 planned themes — inserted once so they exist
+// (and so `GET /game/themes` / the admin UI can reference them) but never
+// overwritten here: each theme's own seed script (seed-football-clubs.ts,
+// seed-movies.ts, seed-video-games.ts) owns its row's `enabled` flag from
+// then on. Re-running this script must never silently re-disable a theme
+// another script already turned on.
+const placeholderThemes = [
+  { id: "football-clubs", nameFr: "Clubs de foot", nameEn: "Football clubs", imageProvider: "football-data", aspectW: 1, aspectH: 1, enabled: false, sortOrder: 1 },
   { id: "movies", nameFr: "Affiches de films", nameEn: "Movie posters", imageProvider: "tmdb", aspectW: 2, aspectH: 3, enabled: false, sortOrder: 2 },
-  { id: "video-games", nameFr: "Jeux vidéo", nameEn: "Video games", imageProvider: "igdb", aspectW: 3, aspectH: 4, enabled: false, sortOrder: 3 },
+  { id: "video-games", nameFr: "Jeux vidéo", nameEn: "Video games", imageProvider: "rawg", aspectW: 3, aspectH: 4, enabled: false, sortOrder: 3 },
 ];
 
 async function main() {
   console.log(`Seeding ${allBrands.length} brand catalog items...`);
 
-  for (const theme of themes) {
-    await db
-      .insert(themesTable)
-      .values(theme)
-      .onConflictDoUpdate({ target: themesTable.id, set: theme });
+  await db.insert(themesTable).values(brandsTheme).onConflictDoUpdate({ target: themesTable.id, set: brandsTheme });
+  for (const theme of placeholderThemes) {
+    await db.insert(themesTable).values(theme).onConflictDoNothing({ target: themesTable.id });
   }
 
   const rows = allBrands.map((brand) => ({

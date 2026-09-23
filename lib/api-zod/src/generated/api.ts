@@ -47,6 +47,7 @@ export const ListThemesResponseItem = zod.object({
   "id": zod.string(),
   "nameFr": zod.string(),
   "nameEn": zod.string(),
+  "imageProvider": zod.string(),
   "aspectW": zod.number().int(),
   "aspectH": zod.number().int()
 })

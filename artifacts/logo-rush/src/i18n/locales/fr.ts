@@ -115,6 +115,10 @@ export default {
     reported: 'Signalé',
     action: 'Logo méconnaissable ?',
   },
+  about: {
+    title: 'À propos',
+    intro: "Logo Rush s'appuie sur des APIs tierces pour les images de chaque thème. Voici leurs sources, comme leurs conditions d'utilisation l'exigent.",
+  },
   notFound: {
     title: 'Page introuvable',
     description: "Le logo que vous cherchez n'existe pas ou la page a été déplacée.",

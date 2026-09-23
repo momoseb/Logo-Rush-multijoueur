@@ -264,13 +264,15 @@ components:
           enum: [waiting, playing]
     Theme:
       type: object
-      required: [id, nameFr, nameEn, aspectW, aspectH]
+      required: [id, nameFr, nameEn, imageProvider, aspectW, aspectH]
       properties:
         id:
           type: string
         nameFr:
           type: string
         nameEn:
+          type: string
+        imageProvider:
           type: string
         aspectW:
           type: integer

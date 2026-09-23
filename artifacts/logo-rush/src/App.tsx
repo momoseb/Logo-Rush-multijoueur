@@ -18,6 +18,7 @@ import Solo from '@/pages/solo';
 import Multiplayer from '@/pages/multiplayer';
 import Room from '@/pages/room';
 import Leaderboard from '@/pages/leaderboard';
+import About from '@/pages/about';
 import NotFound from '@/pages/not-found';
 import { getSocket } from '@/lib/socket';
 import { useGameStore } from '@/store/useGameStore';
@@ -33,6 +34,7 @@ function Router() {
         <Route path="/solo" component={Solo} />
         <Route path="/multiplayer" component={Multiplayer} />
         <Route path="/leaderboard" component={Leaderboard} />
+        <Route path="/about" component={About} />
         <Route path="/logo-audit" component={LogoAudit} />
         <Route path="/room/:code" component={Room} />
         <Route component={NotFound} />

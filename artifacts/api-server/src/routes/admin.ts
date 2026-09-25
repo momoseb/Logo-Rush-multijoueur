@@ -42,6 +42,33 @@ adminRouter.get("/admin/themes", async (_req, res) => {
   res.json(themes);
 });
 
+// Full schema (incl. imageProvider/aspect ratio) so a theme can be created
+// from scratch, e.g. by scripts/src/seed-catalog/push-remote.ts when
+// direct DB access isn't available. PATCH below deliberately keeps a
+// restricted subset for routine edits of an already-existing theme.
+const themeCreateSchema = z.object({
+  id: z.string().min(1),
+  nameFr: z.string().min(1),
+  nameEn: z.string().min(1),
+  imageProvider: z.string().min(1),
+  aspectW: z.number().int().default(1),
+  aspectH: z.number().int().default(1),
+  enabled: z.boolean().default(true),
+  sortOrder: z.number().int().default(0),
+});
+
+adminRouter.post("/admin/themes", async (req, res): Promise<void> => {
+  const input = themeCreateSchema.safeParse(req.body);
+  if (!input.success) {
+    res.status(400).json({ error: input.error.message });
+    return;
+  }
+  await db.insert(themesTable).values(input.data).onConflictDoUpdate({ target: themesTable.id, set: input.data });
+  await refreshCatalog();
+  logger.info({ themeId: input.data.id }, "Admin created/updated a theme");
+  res.status(201).json({ ok: true, id: input.data.id });
+});
+
 const themeUpdateSchema = z.object({
   nameFr: z.string().min(1).optional(),
   nameEn: z.string().min(1).optional(),

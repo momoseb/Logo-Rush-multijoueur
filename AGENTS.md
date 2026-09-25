@@ -130,6 +130,26 @@ gotcha).
   by adding a server-side proxy again; if logos are actually broken for
   real users in production, that's a different, real bug to chase on
   its own terms, not from this sandbox's automated tooling.
+- **This sandboxed environment cannot open raw-TCP connections to
+  Postgres (or any other database) — only outbound HTTPS works.** A
+  direct `DATABASE_URL` connection attempt from here just hangs and
+  times out (`ETIMEDOUT`), even once the target DB's IP allowlist is
+  opened — the request never leaves the sandbox in the first place
+  (`/root/.ccr/README.md` lists "raw-TCP databases" as explicitly
+  unsupported by this environment's egress proxy). Render's Shell tab
+  (which runs inside Render's own network, sidestepping this entirely)
+  is also gated behind a paid plan — confirmed the hard way once already.
+  **The supported way to seed or fix a deployed environment's catalog
+  from here is `scripts/src/seed-catalog/push-remote.ts`**
+  (`pnpm --filter @workspace/scripts run seed-push-remote`, needs
+  `API_BASE_URL` + `ADMIN_TOKEN` and whichever third-party key a theme
+  needs): it reuses each seed script's pure `buildXxxCatalog()` function
+  (fetch + filter + transform, no DB access) and pushes the result over
+  HTTPS to the already-deployed `POST /admin/themes` /
+  `POST /admin/catalog/bulk` endpoints instead of writing to Postgres
+  directly — those endpoints run inside Render's network, where DB access
+  works fine. Don't re-attempt a direct `DATABASE_URL` connection or the
+  Render Shell from a sandboxed session; use `push-remote.ts` instead.
 - **Testing multiplayer with Playwright**: two `browser.newContext()`
   calls give each "player" fully isolated storage, like two different
   devices/browsers — use that to simulate two real, independent players.

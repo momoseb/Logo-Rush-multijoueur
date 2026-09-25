@@ -5,10 +5,10 @@
 // Run with DATABASE_URL and RAWG_API_KEY set:
 //   RAWG_API_KEY=... pnpm --filter @workspace/scripts run seed-video-games
 import { eq } from "drizzle-orm";
-import { db, pool, themesTable, catalogItemsTable, makeCatalogItemId } from "@workspace/db";
+import { db, pool, themesTable, catalogItemsTable, makeCatalogItemId, type NewTheme, type NewCatalogItem } from "@workspace/db";
 
 const THEME_ID = "video-games";
-const theme = { id: THEME_ID, nameFr: "Jeux vidéo", nameEn: "Video games", imageProvider: "rawg", aspectW: 3, aspectH: 4, sortOrder: 3 };
+const theme: NewTheme = { id: THEME_ID, nameFr: "Jeux vidéo", nameEn: "Video games", imageProvider: "rawg", aspectW: 3, aspectH: 4, enabled: true, sortOrder: 3 };
 const API_BASE = "https://api.rawg.io/api/games";
 const PAGE_SIZE = 40;
 // "-added" (most added to players' libraries) is a much better proxy for
@@ -49,17 +49,10 @@ async function fetchPage(apiKey: string, extraParams: string, page: number): Pro
   return data.results ?? [];
 }
 
-async function main() {
-  const apiKey = process.env.RAWG_API_KEY;
-  if (!apiKey) {
-    console.error(
-      "RAWG_API_KEY is not set. Create a free account and API key at https://rawg.io/apidocs " +
-        "(see the multi-theme plan for the full step-by-step) then re-run with RAWG_API_KEY=... set.",
-    );
-    process.exitCode = 1;
-    return;
-  }
-
+// Pure fetch/transform, no DB access — reused by main() below (writes
+// straight to the DB) and by push-remote.ts (writes via the admin HTTP API
+// when direct DB access isn't available, e.g. from a sandboxed session).
+export async function buildVideoGamesCatalog(apiKey: string): Promise<{ theme: NewTheme; rows: NewCatalogItem[] }> {
   const gamesById = new Map<number, RawgGame>();
   for (const { label, extraParams } of QUERY_SETS) {
     for (let page = 1; page <= PAGES; page += 1) {
@@ -70,7 +63,7 @@ async function main() {
     }
   }
 
-  const rows: (typeof catalogItemsTable.$inferInsert)[] = [...gamesById.values()].map((game) => ({
+  const rows: NewCatalogItem[] = [...gamesById.values()].map((game) => ({
     id: makeCatalogItemId(THEME_ID, String(game.id)),
     themeId: THEME_ID,
     answerFr: game.name,
@@ -82,6 +75,22 @@ async function main() {
     imageRef: game.background_image!,
     active: true,
   }));
+
+  return { theme, rows };
+}
+
+async function main() {
+  const apiKey = process.env.RAWG_API_KEY;
+  if (!apiKey) {
+    console.error(
+      "RAWG_API_KEY is not set. Create a free account and API key at https://rawg.io/apidocs " +
+        "(see the multi-theme plan for the full step-by-step) then re-run with RAWG_API_KEY=... set.",
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  const { rows } = await buildVideoGamesCatalog(apiKey);
 
   // Full resync rather than a plain upsert — see seed-movies.ts for why.
   // Safe because this theme's content is 100% RAWG-sourced.
@@ -104,7 +113,9 @@ async function main() {
   await pool.end();
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

@@ -15,8 +15,9 @@ const API_BASE = "https://api.themoviedb.org/3";
 const POSTER_SIZE = "w500";
 // Popular, well-known films are far easier to guess from a poster than
 // obscure ones — pulling several pages of "popularity.desc" gives a good
-// mix while staying recognizable.
-const PAGES = 5;
+// mix while staying recognizable. 20 results/page, so 25 pages ~= 500
+// movies (a handful may be dropped below for lacking a poster_path).
+const PAGES = 25;
 // Keep the catalog to films a player could plausibly recognize today —
 // computed from the current date at run time, never a hardcoded year.
 const MAX_AGE_YEARS = 50;

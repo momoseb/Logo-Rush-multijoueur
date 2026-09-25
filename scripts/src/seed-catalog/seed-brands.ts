@@ -4,10 +4,10 @@
 // "brands" enabled — the other 3 stay disabled until their own seed
 // scripts populate real content). Run with DATABASE_URL pointed at the
 // target database: `pnpm --filter @workspace/scripts run seed-brands`.
-import { db, pool, themesTable, catalogItemsTable, makeCatalogItemId } from "@workspace/db";
+import { db, pool, themesTable, catalogItemsTable, makeCatalogItemId, type NewTheme, type NewCatalogItem } from "@workspace/db";
 import { allBrands } from "./brands-data";
 
-const brandsTheme = { id: "brands", nameFr: "Marques", nameEn: "Brands", imageProvider: "brandfetch", aspectW: 1, aspectH: 1, enabled: true, sortOrder: 0 };
+export const brandsTheme: NewTheme = { id: "brands", nameFr: "Marques", nameEn: "Brands", imageProvider: "brandfetch", aspectW: 1, aspectH: 1, enabled: true, sortOrder: 0 };
 
 // Placeholder rows for the 3 planned themes — inserted once so they exist
 // (and so `GET /game/themes` / the admin UI can reference them) but never
@@ -15,21 +15,17 @@ const brandsTheme = { id: "brands", nameFr: "Marques", nameEn: "Brands", imagePr
 // seed-movies.ts, seed-video-games.ts) owns its row's `enabled` flag from
 // then on. Re-running this script must never silently re-disable a theme
 // another script already turned on.
-const placeholderThemes = [
+export const placeholderThemes: NewTheme[] = [
   { id: "football-clubs", nameFr: "Clubs de foot", nameEn: "Football clubs", imageProvider: "football-data", aspectW: 1, aspectH: 1, enabled: false, sortOrder: 1 },
   { id: "movies", nameFr: "Affiches de films", nameEn: "Movie posters", imageProvider: "tmdb", aspectW: 2, aspectH: 3, enabled: false, sortOrder: 2 },
   { id: "video-games", nameFr: "Jeux vidéo", nameEn: "Video games", imageProvider: "rawg", aspectW: 3, aspectH: 4, enabled: false, sortOrder: 3 },
 ];
 
-async function main() {
-  console.log(`Seeding ${allBrands.length} brand catalog items...`);
-
-  await db.insert(themesTable).values(brandsTheme).onConflictDoUpdate({ target: themesTable.id, set: brandsTheme });
-  for (const theme of placeholderThemes) {
-    await db.insert(themesTable).values(theme).onConflictDoNothing({ target: themesTable.id });
-  }
-
-  const rows = allBrands.map((brand) => ({
+// Pure fetch/transform, no DB access — reused by main() below (writes
+// straight to the DB) and by push-remote.ts (writes via the admin HTTP API
+// when direct DB access isn't available, e.g. from a sandboxed session).
+export function buildBrandsCatalog(): { theme: NewTheme; rows: NewCatalogItem[] } {
+  const rows: NewCatalogItem[] = allBrands.map((brand) => ({
     id: makeCatalogItemId("brands", brand.id),
     themeId: "brands",
     answerFr: brand.answer,
@@ -41,6 +37,17 @@ async function main() {
     imageRef: brand.domain,
     active: true,
   }));
+  return { theme: brandsTheme, rows };
+}
+
+async function main() {
+  const { theme, rows } = buildBrandsCatalog();
+  console.log(`Seeding ${rows.length} brand catalog items...`);
+
+  await db.insert(themesTable).values(theme).onConflictDoUpdate({ target: themesTable.id, set: theme });
+  for (const placeholder of placeholderThemes) {
+    await db.insert(themesTable).values(placeholder).onConflictDoNothing({ target: themesTable.id });
+  }
 
   for (const row of rows) {
     await db
@@ -53,7 +60,11 @@ async function main() {
   await pool.end();
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+// Only run main() when this file is executed directly (not when
+// push-remote.ts imports buildBrandsCatalog for its own, DB-free flow).
+if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

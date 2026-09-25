@@ -9,6 +9,7 @@
     "seed-football-clubs": "tsx ./src/seed-catalog/seed-football-clubs.ts",
     "seed-movies": "tsx ./src/seed-catalog/seed-movies.ts",
     "seed-video-games": "tsx ./src/seed-catalog/seed-video-games.ts",
+    "seed-push-remote": "tsx ./src/seed-catalog/push-remote.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

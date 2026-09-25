@@ -7,10 +7,10 @@
 // Run with DATABASE_URL and TMDB_API_KEY set:
 //   TMDB_API_KEY=... pnpm --filter @workspace/scripts run seed-movies
 import { eq } from "drizzle-orm";
-import { db, pool, themesTable, catalogItemsTable, makeCatalogItemId } from "@workspace/db";
+import { db, pool, themesTable, catalogItemsTable, makeCatalogItemId, type NewTheme, type NewCatalogItem } from "@workspace/db";
 
 const THEME_ID = "movies";
-const theme = { id: THEME_ID, nameFr: "Affiches de films", nameEn: "Movie posters", imageProvider: "tmdb", aspectW: 2, aspectH: 3, sortOrder: 2 };
+const theme: NewTheme = { id: THEME_ID, nameFr: "Affiches de films", nameEn: "Movie posters", imageProvider: "tmdb", aspectW: 2, aspectH: 3, enabled: true, sortOrder: 2 };
 const API_BASE = "https://api.themoviedb.org/3";
 const POSTER_SIZE = "w500";
 // Popular, well-known films are far easier to guess from a poster than
@@ -48,18 +48,11 @@ async function fetchDiscoverPage(apiKey: string, language: string, page: number)
   return data.results ?? [];
 }
 
-async function main() {
-  const apiKey = process.env.TMDB_API_KEY;
-  if (!apiKey) {
-    console.error(
-      "TMDB_API_KEY is not set. Create a free account and API key at https://www.themoviedb.org/settings/api " +
-        "(see the multi-theme plan for the full step-by-step) then re-run with TMDB_API_KEY=... set.",
-    );
-    process.exitCode = 1;
-    return;
-  }
-
-  const rows: (typeof catalogItemsTable.$inferInsert)[] = [];
+// Pure fetch/transform, no DB access — reused by main() below (writes
+// straight to the DB) and by push-remote.ts (writes via the admin HTTP API
+// when direct DB access isn't available, e.g. from a sandboxed session).
+export async function buildMoviesCatalog(apiKey: string): Promise<{ theme: NewTheme; rows: NewCatalogItem[] }> {
+  const rows: NewCatalogItem[] = [];
   for (let page = 1; page <= PAGES; page += 1) {
     const [frResults, enResults] = await Promise.all([
       fetchDiscoverPage(apiKey, "fr-FR", page),
@@ -91,6 +84,22 @@ async function main() {
     await sleep(250);
   }
 
+  return { theme, rows };
+}
+
+async function main() {
+  const apiKey = process.env.TMDB_API_KEY;
+  if (!apiKey) {
+    console.error(
+      "TMDB_API_KEY is not set. Create a free account and API key at https://www.themoviedb.org/settings/api " +
+        "(see the multi-theme plan for the full step-by-step) then re-run with TMDB_API_KEY=... set.",
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  const { rows } = await buildMoviesCatalog(apiKey);
+
   // Full resync rather than a plain upsert: without this, re-running the
   // script after tightening a filter (as happened with MIN_VOTE_COUNT)
   // would leave previously-imported, now-excluded movies stranded in the
@@ -115,7 +124,9 @@ async function main() {
   await pool.end();
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

@@ -6,10 +6,10 @@
 // Run with DATABASE_URL and FOOTBALL_DATA_API_KEY set:
 //   FOOTBALL_DATA_API_KEY=... pnpm --filter @workspace/scripts run seed-football-clubs
 import { eq } from "drizzle-orm";
-import { db, pool, themesTable, catalogItemsTable, makeCatalogItemId } from "@workspace/db";
+import { db, pool, themesTable, catalogItemsTable, makeCatalogItemId, type NewTheme, type NewCatalogItem } from "@workspace/db";
 
 const THEME_ID = "football-clubs";
-const theme = { id: THEME_ID, nameFr: "Clubs de foot", nameEn: "Football clubs", imageProvider: "football-data", aspectW: 1, aspectH: 1, sortOrder: 1 };
+const theme: NewTheme = { id: THEME_ID, nameFr: "Clubs de foot", nameEn: "Football clubs", imageProvider: "football-data", aspectW: 1, aspectH: 1, enabled: true, sortOrder: 1 };
 const API_BASE = "https://api.football-data.org/v4";
 
 // Top European competitions, including Ligue 1 for the game's French
@@ -42,17 +42,10 @@ async function fetchCompetitionTeams(apiKey: string, code: string): Promise<Foot
   return data.teams ?? [];
 }
 
-async function main() {
-  const apiKey = process.env.FOOTBALL_DATA_API_KEY;
-  if (!apiKey) {
-    console.error(
-      "FOOTBALL_DATA_API_KEY is not set. Get a free key at https://www.football-data.org/client/register " +
-        "(see the multi-theme plan for the full step-by-step) then re-run with FOOTBALL_DATA_API_KEY=... set.",
-    );
-    process.exitCode = 1;
-    return;
-  }
-
+// Pure fetch/transform, no DB access — reused by main() below (writes
+// straight to the DB) and by push-remote.ts (writes via the admin HTTP API
+// when direct DB access isn't available, e.g. from a sandboxed session).
+export async function buildFootballClubsCatalog(apiKey: string): Promise<{ theme: NewTheme; rows: NewCatalogItem[] }> {
   const teamsById = new Map<number, FootballDataTeam>();
   for (const code of COMPETITION_CODES) {
     const teams = await fetchCompetitionTeams(apiKey, code);
@@ -63,7 +56,7 @@ async function main() {
     await sleep(6500);
   }
 
-  const rows = [...teamsById.values()]
+  const rows: NewCatalogItem[] = [...teamsById.values()]
     .filter((team) => team.crest)
     .map((team) => {
       const aliases = [team.shortName, team.tla].filter((value): value is string => Boolean(value) && value !== team.name);
@@ -80,6 +73,22 @@ async function main() {
         active: true,
       };
     });
+
+  return { theme, rows };
+}
+
+async function main() {
+  const apiKey = process.env.FOOTBALL_DATA_API_KEY;
+  if (!apiKey) {
+    console.error(
+      "FOOTBALL_DATA_API_KEY is not set. Get a free key at https://www.football-data.org/client/register " +
+        "(see the multi-theme plan for the full step-by-step) then re-run with FOOTBALL_DATA_API_KEY=... set.",
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  const { rows } = await buildFootballClubsCatalog(apiKey);
 
   // Full resync rather than a plain upsert: a club relegated out of the
   // tracked competitions (or a filter tightened later, as happened with
@@ -104,7 +113,9 @@ async function main() {
   await pool.end();
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

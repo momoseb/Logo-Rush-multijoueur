@@ -184,25 +184,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SoloRevealResult"
-  /game/logo-image/{token}:
-    get:
-      operationId: getLogoImage
-      tags: [game]
-      summary: Proxy a round's logo image without exposing its source domain
-      parameters:
-        - name: token
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Logo image
-          content:
-            image/*:
-              schema:
-                type: string
-                format: binary
   /game/logo-reports:
     post:
       operationId: reportLogo
@@ -241,7 +222,7 @@ components:
           type: integer
     PublicRoom:
       type: object
-      required: [code, name, themeId, hostName, playerCount, maxPlayers, roundCount, roundDuration, status]
+      required: [code, name, themeId, hostName, playerCount, maxPlayers, mode, roundCount, roundDuration, targetScore, status]
       properties:
         code:
           type: string
@@ -255,9 +236,14 @@ components:
           type: integer
         maxPlayers:
           type: integer
+        mode:
+          type: string
+          enum: [ffa, duel]
         roundCount:
           type: integer
         roundDuration:
+          type: integer
+        targetScore:
           type: integer
         status:
           type: string

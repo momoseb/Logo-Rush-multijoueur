@@ -5,6 +5,7 @@
  * Logo Rush game API
  * OpenAPI spec version: 0.1.0
  */
+import type { PublicRoomMode } from './publicRoomMode';
 import type { PublicRoomStatus } from './publicRoomStatus';
 
 export interface PublicRoom {
@@ -14,7 +15,9 @@ export interface PublicRoom {
   hostName: string;
   playerCount: number;
   maxPlayers: number;
+  mode: PublicRoomMode;
   roundCount: number;
   roundDuration: number;
+  targetScore: number;
   status: PublicRoomStatus;
 }

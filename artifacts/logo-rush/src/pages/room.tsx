@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Users, Trophy, Play, Check, X, Clock, Copy, Crown } from 'lucide-react';
+import { ArrowLeft, Users, Trophy, Play, Check, X, Clock, Copy, Crown, Swords } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { PixelatedLogo } from '@/components/pixelated-logo';
@@ -42,6 +42,8 @@ export default function Room() {
   const [roundDuration, setRoundDuration] = useState(15);
   const [roundNumber, setRoundNumber] = useState(0);
   const [totalRounds, setTotalRounds] = useState(0);
+  const [mode, setMode] = useState<'ffa' | 'duel'>('ffa');
+  const [targetScore, setTargetScore] = useState(5);
   
   const [guess, setGuess] = useState('');
   const [guessState, setGuessState] = useState<'idle' | 'correct' | 'wrong'>('idle');
@@ -87,6 +89,8 @@ export default function Room() {
       if (data.status === 'waiting') setGameState('waiting');
       if (data.roundCount) setTotalRounds(data.roundCount);
       if (data.roundDuration) setRoundDuration(data.roundDuration);
+      if (data.mode) setMode(data.mode);
+      if (data.targetScore) setTargetScore(data.targetScore);
     };
 
     const handleGameStart = () => {
@@ -176,10 +180,13 @@ export default function Room() {
     getSocket().emit('game:restart', { code });
   };
 
-  const updateRoomSettings = (nextRoundCount: number, nextRoundDuration: number, nextThemeId = themeId) => {
+  // The "primary" setting is manches (FFA) or points pour gagner (duel) — the
+  // server only applies whichever one matches the room's own mode, so it's
+  // safe to always send both.
+  const updateRoomSettings = (nextPrimaryValue: number, nextRoundDuration: number, nextThemeId = themeId) => {
     getSocket().emit(
       'room:settings',
-      { code, themeId: nextThemeId, roundCount: nextRoundCount, roundDuration: nextRoundDuration },
+      { code, themeId: nextThemeId, roundCount: nextPrimaryValue, targetScore: nextPrimaryValue, roundDuration: nextRoundDuration },
       (result: { ok: boolean; error?: string }) => {
         if (!result.ok) toast({ variant: 'destructive', description: result.error });
       },
@@ -266,7 +273,14 @@ export default function Room() {
             <ArrowLeft className="mr-2 h-4 w-4" /> {t('room.leave')}
           </Button>
           <div className="text-center">
-            <h1 className="text-3xl font-bold">{roomName || t('room.defaultName')}</h1>
+            <h1 className="text-3xl font-bold flex items-center justify-center gap-2">
+              {roomName || t('room.defaultName')}
+              {mode === 'duel' && (
+                <span className="flex items-center gap-1 text-xs font-semibold bg-secondary/20 text-secondary px-2 py-1 rounded-md align-middle">
+                  <Swords className="h-3.5 w-3.5" /> Duel 1v1
+                </span>
+              )}
+            </h1>
             <div className="flex items-center justify-center gap-2 mt-2">
               <span className="text-muted-foreground">{t('room.code')}</span>
               <span className="font-mono bg-primary/20 text-primary px-3 py-1 rounded-md text-lg tracking-widest">{code}</span>
@@ -318,7 +332,7 @@ export default function Room() {
                             type="button"
                             size="sm"
                             variant={themeId === theme.id ? 'default' : 'outline'}
-                            onClick={() => updateRoomSettings(totalRounds, roundDuration, theme.id)}
+                            onClick={() => updateRoomSettings(mode === 'duel' ? targetScore : totalRounds, roundDuration, theme.id)}
                           >
                             {locale === 'en' ? theme.nameEn : theme.nameFr}
                           </Button>
@@ -327,14 +341,16 @@ export default function Room() {
                     </div>
                   )}
                   <div className="w-full mb-4">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('room.roundsPerGame')}</p>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      {mode === 'duel' ? 'Points pour gagner' : t('room.roundsPerGame')}
+                    </p>
                     <div className="grid grid-cols-4 gap-1">
                       {[5, 10, 15, 20].map((value) => (
                         <Button
                           key={value}
                           type="button"
                           size="sm"
-                          variant={totalRounds === value ? 'default' : 'outline'}
+                          variant={(mode === 'duel' ? targetScore : totalRounds) === value ? 'default' : 'outline'}
                           onClick={() => updateRoomSettings(value, roundDuration)}
                         >
                           {value}
@@ -351,16 +367,24 @@ export default function Room() {
                           type="button"
                           size="sm"
                           variant={roundDuration === value ? 'secondary' : 'outline'}
-                          onClick={() => updateRoomSettings(totalRounds, value)}
+                          onClick={() => updateRoomSettings(mode === 'duel' ? targetScore : totalRounds, value)}
                         >
                           {value} s
                         </Button>
                       ))}
                     </div>
                   </div>
-                  <Button size="lg" className="w-full text-lg h-14" onClick={handleStartGame} disabled={players.length < 1}>
+                  <Button
+                    size="lg"
+                    className="w-full text-lg h-14"
+                    onClick={handleStartGame}
+                    disabled={mode === 'duel' ? players.length < 2 : players.length < 1}
+                  >
                     {t('room.start')}
                   </Button>
+                  {mode === 'duel' && players.length < 2 && (
+                    <p className="mt-2 text-xs text-muted-foreground">En attente d'un second joueur...</p>
+                  )}
                 </>
               ) : (
                 <>
@@ -384,8 +408,17 @@ export default function Room() {
       {/* Header Info */}
       <div className="flex justify-between items-end mb-4 px-2">
         <div>
-          <p className="text-sm text-muted-foreground font-semibold uppercase tracking-wider">{t('room.round')}</p>
-          <p className="text-2xl font-bold">{roundNumber} <span className="text-muted-foreground text-lg">/ {totalRounds}</span></p>
+          {mode === 'duel' ? (
+            <>
+              <p className="text-sm text-muted-foreground font-semibold uppercase tracking-wider">Premier à</p>
+              <p className="text-2xl font-bold">{targetScore} <span className="text-muted-foreground text-lg">points</span></p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground font-semibold uppercase tracking-wider">{t('room.round')}</p>
+              <p className="text-2xl font-bold">{roundNumber} <span className="text-muted-foreground text-lg">/ {totalRounds}</span></p>
+            </>
+          )}
         </div>
         {gameState === 'playing' && <ReportLogoButton logoId={currentLogo?.token} />}
         <div className="text-right">
@@ -453,7 +486,11 @@ export default function Room() {
                 className="absolute inset-0 bg-background/90 backdrop-blur-xl flex flex-col items-center justify-center p-8 z-20"
               >
                 <Crown className="w-20 h-20 text-yellow-500 mb-6 drop-shadow-[0_0_15px_rgba(234,179,8,0.5)]" />
-                <h2 className="text-4xl font-bold mb-8">{t('room.gameOver')}</h2>
+                <h2 className="text-4xl font-bold mb-8 text-center">
+                  {mode === 'duel' && sortedPlayers[0]
+                    ? `🏆 ${sortedPlayers[0].nickname} remporte le duel !`
+                    : t('room.gameOver')}
+                </h2>
                 
                 <div className="w-full max-w-md space-y-3 mb-8">
                   {sortedPlayers.slice(0, 3).map((p, i) => (

@@ -33,8 +33,10 @@ export const ListPublicRoomsResponseItem = zod.object({
   "hostName": zod.string(),
   "playerCount": zod.number().int(),
   "maxPlayers": zod.number().int(),
+  "mode": zod.enum(['ffa', 'duel']),
   "roundCount": zod.number().int(),
   "roundDuration": zod.number().int(),
+  "targetScore": zod.number().int(),
   "status": zod.enum(['waiting', 'playing'])
 })
 export const ListPublicRoomsResponse = zod.array(ListPublicRoomsResponseItem)
@@ -173,16 +175,6 @@ export const RevealSoloRoundBody = zod.object({
 export const RevealSoloRoundResponse = zod.object({
   "answer": zod.string()
 })
-
-
-/**
- * @summary Proxy a round's logo image without exposing its source domain
- */
-export const GetLogoImageParams = zod.object({
-  "token": zod.coerce.string()
-})
-
-export const GetLogoImageResponse = zod.unknown()
 
 
 /**

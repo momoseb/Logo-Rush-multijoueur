@@ -18,6 +18,7 @@ export * from './logoReportInput';
 export * from './logoReportInputReason';
 export * from './logoReportResult';
 export * from './publicRoom';
+export * from './publicRoomMode';
 export * from './publicRoomStatus';
 export * from './soloGuessInput';
 export * from './soloGuessInputLocale';

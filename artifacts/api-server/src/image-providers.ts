@@ -1,28 +1,20 @@
 import type { Theme } from "@workspace/db";
 
-const BRANDFETCH_CDN_CLIENT_ID = process.env.BRANDFETCH_CLIENT_ID || "1idke8AlkDn4BHhX1fs";
-
-// Resolves a catalog item's `imageRef` into an actual fetchable image URL,
-// dispatching on the item's theme.imageProvider. Only "brandfetch" builds
-// its URL live from a bare domain (imageRef = domain, e.g. "apple.com") —
-// this mirrors the original brand-logo behavior exactly. The other
-// providers (football-data.org, TMDB, RAWG — chosen for being usable on a
-// genuinely free tier, see the multi-theme plan) don't have Brandfetch's
-// "logo by domain" API, so their imageRef is instead a direct, stable CDN
-// URL resolved once by the matching scripts/src/seed-catalog/seed-*.ts
-// script at content-authoring time — no live third-party API call (and no
-// API credentials) is needed on the hot gameplay path for those themes.
-export function resolveImageUrl(theme: Pick<Theme, "imageProvider">, imageRef: string, fallback: boolean): string {
-  switch (theme.imageProvider) {
-    case "brandfetch": {
-      const fallbackPath = fallback ? "/fallback/lettermark" : "";
-      return `https://cdn.brandfetch.io/domain/${encodeURIComponent(imageRef)}/w/512/h/512/type/icon${fallbackPath}?c=${encodeURIComponent(BRANDFETCH_CDN_CLIENT_ID)}`;
-    }
-    case "football-data":
-    case "tmdb":
-    case "rawg":
-      return imageRef;
-    default:
-      throw new Error(`Unknown image provider: ${theme.imageProvider}`);
-  }
+// Turns a catalog item's `imageRef` into the string the *client* uses to
+// fetch the image — never a server-resolved/proxied URL. A server-side
+// image proxy was tried for the brands theme (hide the domain behind the
+// same round token used for the id) and had to be reverted: Brandfetch's
+// CDN actively rejects non-browser requests ("automated_traffic", see the
+// AGENTS.md gotcha), which broke every logo image in production. The
+// browser has to hotlink `cdn.brandfetch.io` directly, so this just tags
+// the value as `brandfetch://<domain>` for `getBrandfetchUrl` (frontend)
+// to resolve, exactly like before any of this existed.
+//
+// The other providers (football-data/tmdb/rawg) were never proxied to
+// begin with: their imageRef is already a direct, static CDN URL that
+// doesn't reveal the answer the way a brand's own domain does, so it's
+// simply passed through as-is.
+export function toClientImageUrl(theme: Pick<Theme, "imageProvider"> | undefined, imageRef: string): string {
+  if (theme?.imageProvider === "brandfetch") return `brandfetch://${imageRef}`;
+  return imageRef;
 }

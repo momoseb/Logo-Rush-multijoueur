@@ -18,9 +18,8 @@ import {
   SubmitSoloScoreResponse,
 } from "@workspace/api-zod";
 import { findCatalogItem, getCatalogItems, getPublicRooms, getStats, getThemeById, getThemes, matchesGuess, pickAnswer } from "../game";
-import { resolveImageUrl } from "../image-providers";
+import { toClientImageUrl } from "../image-providers";
 import { signLogoToken, verifyLogoToken } from "../logo-token";
-import { logger } from "../lib/logger";
 
 const gameRouter: IRouter = Router();
 
@@ -50,7 +49,7 @@ gameRouter.get("/game/logos", (_req, res) => {
     aliasesEn: item.aliasesEn,
     category: item.category ?? undefined,
     difficulty: item.difficulty,
-    imageUrl: `logotoken://${signLogoToken({ itemId: item.id, themeId: item.themeId })}`,
+    imageUrl: toClientImageUrl(getThemeById(item.themeId), item.imageRef),
   }));
   res.json(ListSoloLogosResponse.parse(items));
 });
@@ -60,17 +59,22 @@ gameRouter.get("/game/logos", (_req, res) => {
 // includes `answer`/`aliases` — the id itself is an answer slug, so even the
 // id is replaced by an opaque per-round token. See /game/solo/guess and
 // /game/solo/reveal, which resolve the token server-side.
+//
+// `imageUrl` is NOT proxied through this server — see image-providers.ts
+// for why (Brandfetch's CDN blocks non-browser requests; the other
+// providers' imageRef is already a direct URL that doesn't need hiding).
 gameRouter.get("/game/solo/logos", (req, res): void => {
   const params = ListSoloRoundsQueryParams.safeParse({ themeId: req.query.themeId });
   if (!params.success) {
     res.status(400).json({ error: "Thème invalide." });
     return;
   }
+  const theme = getThemeById(params.data.themeId);
   const rounds = getCatalogItems()
     .filter((item) => item.themeId === params.data.themeId)
     .map((item) => {
       const token = signLogoToken({ itemId: item.id, themeId: item.themeId });
-      return { token, themeId: item.themeId, category: item.category ?? undefined, difficulty: item.difficulty, imageUrl: `logotoken://${token}` };
+      return { token, themeId: item.themeId, category: item.category ?? undefined, difficulty: item.difficulty, imageUrl: toClientImageUrl(theme, item.imageRef) };
     });
   res.json(ListSoloRoundsResponse.parse(rounds));
 });
@@ -94,31 +98,6 @@ gameRouter.post("/game/solo/reveal", (req, res): void => {
     return;
   }
   res.json(RevealSoloRoundResponse.parse({ answer: pickAnswer(found.item, asLocale(input.data.locale)) }));
-});
-
-gameRouter.get("/game/logo-image/:token", async (req, res): Promise<void> => {
-  const found = findItemByToken(req.params.token);
-  const theme = found && getThemeById(found.item.themeId);
-  if (!found || !theme) {
-    res.status(404).end();
-    return;
-  }
-  const fallback = req.query.fallback === "1" || req.query.fallback === "true";
-  const upstreamUrl = resolveImageUrl(theme, found.item.imageRef, fallback);
-  try {
-    const upstream = await fetch(upstreamUrl);
-    if (!upstream.ok || !upstream.body) {
-      res.status(upstream.status === 404 ? 404 : 502).end();
-      return;
-    }
-    res.setHeader("content-type", upstream.headers.get("content-type") || "image/png");
-    res.setHeader("cache-control", "no-store");
-    const { Readable } = await import("node:stream");
-    Readable.fromWeb(upstream.body as import("node:stream/web").ReadableStream).pipe(res);
-  } catch (error) {
-    logger.error({ error }, "Unable to proxy logo image");
-    res.status(502).end();
-  }
 });
 
 gameRouter.get("/game/solo-leaderboard", async (req, res): Promise<void> => {

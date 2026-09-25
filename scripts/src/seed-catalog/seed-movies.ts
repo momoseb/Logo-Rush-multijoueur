@@ -6,6 +6,7 @@
 //
 // Run with DATABASE_URL and TMDB_API_KEY set:
 //   TMDB_API_KEY=... pnpm --filter @workspace/scripts run seed-movies
+import { eq } from "drizzle-orm";
 import { db, pool, themesTable, catalogItemsTable, makeCatalogItemId } from "@workspace/db";
 
 const THEME_ID = "movies";
@@ -20,6 +21,12 @@ const PAGES = 5;
 // computed from the current date at run time, never a hardcoded year.
 const MAX_AGE_YEARS = 50;
 const minReleaseDate = `${new Date().getFullYear() - MAX_AGE_YEARS}-01-01`;
+// TMDB's "popularity" score also picks up small/regional films having a
+// short-lived trending moment (new local theatrical releases, etc). A
+// minimum vote count is a much better proxy for "a player has plausibly
+// heard of this" — big, well-known films accumulate thousands of votes;
+// obscure ones rarely clear a few hundred.
+const MIN_VOTE_COUNT = 1000;
 
 type TmdbMovie = {
   id: number;
@@ -31,7 +38,7 @@ type TmdbMovie = {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function fetchDiscoverPage(apiKey: string, language: string, page: number): Promise<TmdbMovie[]> {
-  const url = `${API_BASE}/discover/movie?language=${language}&sort_by=popularity.desc&page=${page}&include_adult=false&primary_release_date.gte=${minReleaseDate}`;
+  const url = `${API_BASE}/discover/movie?language=${language}&sort_by=popularity.desc&page=${page}&include_adult=false&primary_release_date.gte=${minReleaseDate}&vote_count.gte=${MIN_VOTE_COUNT}`;
   const response = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}`, accept: "application/json" } });
   if (!response.ok) {
     console.warn(`[seed-movies] ${language} page ${page}: HTTP ${response.status}, skipping.`);
@@ -84,6 +91,12 @@ async function main() {
     await sleep(250);
   }
 
+  // Full resync rather than a plain upsert: without this, re-running the
+  // script after tightening a filter (as happened with MIN_VOTE_COUNT)
+  // would leave previously-imported, now-excluded movies stranded in the
+  // catalog forever. Safe because this theme's content is 100%
+  // TMDB-sourced — nothing else writes to it.
+  await db.delete(catalogItemsTable).where(eq(catalogItemsTable.themeId, THEME_ID));
   for (const row of rows) {
     await db
       .insert(catalogItemsTable)

@@ -7,11 +7,34 @@ production topology (Vercel frontend + Render backend).
 
 ## What this is
 
-A browser game (French UI) where players identify brand logos that
-de-pixelate over time, solo or in real-time multiplayer rooms. pnpm
-workspace, two runtime services (`artifacts/logo-rush` React frontend,
-`artifacts/api-server` Express + Socket.IO backend), shared libs under
-`lib/`. See `replit.md` for the stack/run-command summary.
+A browser game (French + English UI, switchable) where players identify
+things that de-pixelate over time — brand logos, football club crests,
+movie posters, or video game covers, depending on the selected **theme**
+— solo or in real-time multiplayer rooms. pnpm workspace, two runtime
+services (`artifacts/logo-rush` React frontend, `artifacts/api-server`
+Express + Socket.IO backend), shared libs under `lib/`. See `replit.md`
+for the stack/run-command summary (still brand-logo-only in its own
+wording — outdated, kept as-is per its own file header).
+
+**Multi-theme catalog**: the old hardcoded `logos` array is gone. Content
+lives in two Postgres tables (`lib/db/src/schema/themes.ts`,
+`catalog-items.ts`): `themes` (one row per selectable theme — id, display
+names, `imageProvider`, image aspect ratio, `enabled`) and
+`catalog_items` (the actual guessable entries, FK'd to a theme).
+`artifacts/api-server/src/game.ts` loads both into an in-memory cache at
+startup (`loadCatalog`/`refreshCatalog`) and every room/solo round reads
+from that cache, filtered by `themeId` — never the DB directly on the
+hot path. `artifacts/api-server/src/image-providers.ts` resolves a
+catalog item's `imageRef` into a real image URL, dispatching on
+`theme.imageProvider`; only `brandfetch` builds its URL live (domain →
+CDN), the others (`football-data`, `tmdb`, `rawg`) already store a
+direct, pre-resolved CDN URL set once by that theme's seed script (see
+`scripts/src/seed-catalog/seed-{brands,football-clubs,movies,
+video-games}.ts`) — no third-party API key is ever needed at play time,
+only when re-running a seed script. Each seed script does a full
+delete-then-reinsert of its theme's `catalog_items` (not a plain upsert)
+so a tightened filter or a club's relegation doesn't leave stale entries
+stranded forever.
 
 Production deploys the frontend and backend as two **separate origins**
 (Vercel + Render) — not something Replit's router stitches together
@@ -154,15 +177,31 @@ gotcha).
   and has no generated types; client and server event shapes in
   `room.tsx` / `game.ts` are kept in sync by hand. Watch for drift here.
 - `artifacts/logo-rush/src/pages/logo-audit.tsx` (`/logo-audit`) is an
-  internal, unauthenticated QA tool for eyeballing which of the ~380
-  catalog logos actually render via Brandfetch. The player-facing
-  "Signaler ce logo" button (`components/report-logo-button.tsx`,
-  `POST /api/game/logo-reports`, `logo_reports` table) is a different,
-  complementary mechanism: it lets real players flag a logo as
-  unrecognizable/wrong *during play*, persisted server-side. Nothing
-  currently reads the `logo_reports` table back out — there's no
-  admin view yet; querying it directly is the current workflow for
-  triaging which catalog entries to fix or drop.
+  internal, unauthenticated QA tool for eyeballing whether catalog images
+  actually render across every theme (reads the full, all-themes
+  `GET /game/logos` dump). The player-facing "Signaler ce logo" button
+  (`components/report-logo-button.tsx`, `POST /api/game/logo-reports`,
+  `logo_reports` table) is a different, complementary mechanism: it lets
+  real players flag an item as unrecognizable/wrong *during play*,
+  persisted server-side. Nothing currently reads `logo_reports` back
+  out in the UI — querying it directly is still the workflow for
+  triaging which entries to fix or drop.
+- `/admin/catalog` (`artifacts/logo-rush/src/pages/admin-catalog.tsx` +
+  `artifacts/api-server/src/routes/admin.ts`) is the write-capable
+  counterpart to `/logo-audit`: create/edit/delete `catalog_items` per
+  theme, bulk-JSON-import, and toggle a theme's `enabled` flag — all
+  without a redeploy. Unlike every other route in this app, it's gated:
+  every `/api/admin/*` request needs `Authorization: Bearer
+  <ADMIN_TOKEN>` and the whole router 503s if `ADMIN_TOKEN` isn't set
+  server-side (locked down by default, never open). The frontend page
+  just prompts for that token once and keeps it in `sessionStorage`, no
+  real login system. Every write calls `refreshCatalog()` (exported from
+  `game.ts`) so the change is live immediately, without restarting the
+  server. This isn't part of the OpenAPI spec/codegen pipeline on
+  purpose — it's an internal tool, not a public API contract — so its
+  routes are hand-written Express + inline `zod` validation, and the
+  frontend page talks to it with plain `fetch` (see `lib/api-base.ts`'s
+  `apiUrl()`), the same pattern `/logo-audit` already used.
 
 ## Known open issues
 

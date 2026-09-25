@@ -39,6 +39,19 @@ ou manuellement :
     exposer le domaine de la marque au client. À défaut, le serveur
     retombe sur la même valeur publique que `VITE_BRANDFETCH_CLIENT_ID`
     côté frontend.
+  - `ADMIN_TOKEN` — jeton partagé requis pour utiliser `/admin/catalog`
+    (édition du catalogue). Sans cette variable, tout `/api/admin/*`
+    répond 503 : l'interface d'admin est désactivée par défaut, pas
+    ouverte sans authentification.
+  - `FOOTBALL_DATA_API_KEY` / `TMDB_API_KEY` / `RAWG_API_KEY` — uniquement
+    nécessaires pour lancer les scripts de seed ponctuels des thèmes
+    clubs de foot / films / jeux vidéo (`pnpm --filter @workspace/scripts
+    run seed-football-clubs` etc., voir `scripts/src/seed-catalog/`) ;
+    jamais lues sur le chemin de jeu en direct. Le plus simple est de les
+    passer uniquement en local au moment de lancer un seed
+    (`FOOTBALL_DATA_API_KEY=... DATABASE_URL=<prod> pnpm --filter
+    @workspace/scripts run seed-football-clubs`) plutôt que de les
+    stocker en permanence sur le service Render.
 
 CORS est déjà permissif côté API (`cors()` sans restriction d'origine,
 Socket.IO avec `origin: true`) — aucune configuration supplémentaire

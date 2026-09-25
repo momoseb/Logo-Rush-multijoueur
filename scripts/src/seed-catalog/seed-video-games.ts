@@ -4,6 +4,7 @@
 //
 // Run with DATABASE_URL and RAWG_API_KEY set:
 //   RAWG_API_KEY=... pnpm --filter @workspace/scripts run seed-video-games
+import { eq } from "drizzle-orm";
 import { db, pool, themesTable, catalogItemsTable, makeCatalogItemId } from "@workspace/db";
 
 const THEME_ID = "video-games";
@@ -82,6 +83,9 @@ async function main() {
     active: true,
   }));
 
+  // Full resync rather than a plain upsert — see seed-movies.ts for why.
+  // Safe because this theme's content is 100% RAWG-sourced.
+  await db.delete(catalogItemsTable).where(eq(catalogItemsTable.themeId, THEME_ID));
   for (const row of rows) {
     await db
       .insert(catalogItemsTable)

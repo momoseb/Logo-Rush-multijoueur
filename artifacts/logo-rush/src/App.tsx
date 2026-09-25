@@ -23,6 +23,7 @@ import NotFound from '@/pages/not-found';
 import { getSocket } from '@/lib/socket';
 import { useGameStore } from '@/store/useGameStore';
 import LogoAudit from '@/pages/logo-audit';
+import AdminCatalog from '@/pages/admin-catalog';
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ function Router() {
         <Route path="/leaderboard" component={Leaderboard} />
         <Route path="/about" component={About} />
         <Route path="/logo-audit" component={LogoAudit} />
+        <Route path="/admin/catalog" component={AdminCatalog} />
         <Route path="/room/:code" component={Room} />
         <Route component={NotFound} />
       </Switch>

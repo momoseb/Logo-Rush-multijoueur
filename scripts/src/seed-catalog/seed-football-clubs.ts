@@ -5,6 +5,7 @@
 //
 // Run with DATABASE_URL and FOOTBALL_DATA_API_KEY set:
 //   FOOTBALL_DATA_API_KEY=... pnpm --filter @workspace/scripts run seed-football-clubs
+import { eq } from "drizzle-orm";
 import { db, pool, themesTable, catalogItemsTable, makeCatalogItemId } from "@workspace/db";
 
 const THEME_ID = "football-clubs";
@@ -80,6 +81,11 @@ async function main() {
       };
     });
 
+  // Full resync rather than a plain upsert: a club relegated out of the
+  // tracked competitions (or a filter tightened later, as happened with
+  // movies) would otherwise stay stranded in the catalog forever. Safe
+  // because this theme's content is 100% football-data.org-sourced.
+  await db.delete(catalogItemsTable).where(eq(catalogItemsTable.themeId, THEME_ID));
   for (const row of rows) {
     await db
       .insert(catalogItemsTable)

@@ -13,7 +13,10 @@ const API_BASE = "https://api.football-data.org/v4";
 
 // Top European competitions, including Ligue 1 for the game's French
 // audience. football-data.org's free tier covers exactly these "top 12"
-// competitions — see the multi-theme plan.
+// competitions — see the multi-theme plan. All 6 are top-flight domestic
+// leagues (PL/FL1/PD/SA/BL1) or a cup that only top-flight clubs qualify
+// for (CL) — this already satisfies "first-division clubs only" without
+// any extra filtering.
 const COMPETITION_CODES = ["PL", "FL1", "PD", "SA", "BL1", "CL"];
 
 type FootballDataTeam = {

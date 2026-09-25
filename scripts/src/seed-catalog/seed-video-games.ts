@@ -14,6 +14,20 @@ const PAGE_SIZE = 40;
 // "recognizable by a casual player" than "-rating", which surfaces small
 // highly-rated indie titles most people have never seen.
 const PAGES = 5;
+// RAWG has no explicit "AAA" flag, so two queries approximate "recent
+// and/or AAA", merged and deduped by id:
+//  - "recent": released in the last RECENT_YEARS years.
+//  - "AAA-caliber": high Metacritic score, any era — a large-budget,
+//    widely-marketed game overwhelmingly clears this bar for its
+//    well-known titles. Not a real AAA filter (RAWG doesn't expose
+//    publisher budget/tier), just a reasonable, documented proxy.
+const RECENT_YEARS = 5;
+const recentSince = `${new Date().getFullYear() - RECENT_YEARS}-01-01`;
+const today = new Date().toISOString().slice(0, 10);
+const QUERY_SETS = [
+  { label: "recent", extraParams: `dates=${recentSince},${today}` },
+  { label: "AAA-caliber", extraParams: `metacritic=75,100` },
+];
 
 type RawgGame = {
   id: number;
@@ -23,11 +37,11 @@ type RawgGame = {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function fetchPage(apiKey: string, page: number): Promise<RawgGame[]> {
-  const url = `${API_BASE}?key=${encodeURIComponent(apiKey)}&ordering=-added&page_size=${PAGE_SIZE}&page=${page}`;
+async function fetchPage(apiKey: string, extraParams: string, page: number): Promise<RawgGame[]> {
+  const url = `${API_BASE}?key=${encodeURIComponent(apiKey)}&ordering=-added&page_size=${PAGE_SIZE}&page=${page}&${extraParams}`;
   const response = await fetch(url);
   if (!response.ok) {
-    console.warn(`[seed-video-games] page ${page}: HTTP ${response.status}, skipping.`);
+    console.warn(`[seed-video-games] page ${page} (${extraParams}): HTTP ${response.status}, skipping.`);
     return [];
   }
   const data = (await response.json()) as { results?: RawgGame[] };
@@ -45,27 +59,28 @@ async function main() {
     return;
   }
 
-  const rows: (typeof catalogItemsTable.$inferInsert)[] = [];
-  for (let page = 1; page <= PAGES; page += 1) {
-    const games = await fetchPage(apiKey, page);
-    for (const game of games) {
-      if (!game.background_image) continue;
-      rows.push({
-        id: makeCatalogItemId(THEME_ID, String(game.id)),
-        themeId: THEME_ID,
-        answerFr: game.name,
-        answerEn: game.name,
-        aliasesFr: [],
-        aliasesEn: [],
-        difficulty: "medium",
-        category: null,
-        imageRef: game.background_image,
-        active: true,
-      });
+  const gamesById = new Map<number, RawgGame>();
+  for (const { label, extraParams } of QUERY_SETS) {
+    for (let page = 1; page <= PAGES; page += 1) {
+      const games = await fetchPage(apiKey, extraParams, page);
+      for (const game of games) if (game.background_image) gamesById.set(game.id, game);
+      console.log(`[seed-video-games] ${label} page ${page}: ${games.length} games (running total ${gamesById.size} unique)`);
+      await sleep(300);
     }
-    console.log(`[seed-video-games] page ${page}: ${games.length} games (running total ${rows.length})`);
-    await sleep(300);
   }
+
+  const rows: (typeof catalogItemsTable.$inferInsert)[] = [...gamesById.values()].map((game) => ({
+    id: makeCatalogItemId(THEME_ID, String(game.id)),
+    themeId: THEME_ID,
+    answerFr: game.name,
+    answerEn: game.name,
+    aliasesFr: [],
+    aliasesEn: [],
+    difficulty: "medium",
+    category: null,
+    imageRef: game.background_image!,
+    active: true,
+  }));
 
   for (const row of rows) {
     await db

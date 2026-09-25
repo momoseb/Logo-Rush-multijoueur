@@ -16,6 +16,10 @@ const POSTER_SIZE = "w500";
 // obscure ones — pulling several pages of "popularity.desc" gives a good
 // mix while staying recognizable.
 const PAGES = 5;
+// Keep the catalog to films a player could plausibly recognize today —
+// computed from the current date at run time, never a hardcoded year.
+const MAX_AGE_YEARS = 50;
+const minReleaseDate = `${new Date().getFullYear() - MAX_AGE_YEARS}-01-01`;
 
 type TmdbMovie = {
   id: number;
@@ -27,7 +31,7 @@ type TmdbMovie = {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function fetchDiscoverPage(apiKey: string, language: string, page: number): Promise<TmdbMovie[]> {
-  const url = `${API_BASE}/discover/movie?language=${language}&sort_by=popularity.desc&page=${page}&include_adult=false`;
+  const url = `${API_BASE}/discover/movie?language=${language}&sort_by=popularity.desc&page=${page}&include_adult=false&primary_release_date.gte=${minReleaseDate}`;
   const response = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}`, accept: "application/json" } });
   if (!response.ok) {
     console.warn(`[seed-movies] ${language} page ${page}: HTTP ${response.status}, skipping.`);

@@ -9,7 +9,8 @@ import type { SoloRoundDifficulty } from './soloRoundDifficulty';
 
 export interface SoloRound {
   token: string;
-  category: string;
+  themeId: string;
+  category?: string;
   difficulty: SoloRoundDifficulty;
   imageUrl: string;
 }

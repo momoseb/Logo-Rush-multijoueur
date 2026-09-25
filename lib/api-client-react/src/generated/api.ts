@@ -23,6 +23,7 @@ import type {
   GameStats,
   GetSoloLeaderboardParams,
   HealthStatus,
+  ListSoloRoundsParams,
   Logo,
   LogoReportInput,
   LogoReportResult,
@@ -33,7 +34,8 @@ import type {
   SoloRevealInput,
   SoloRevealResult,
   SoloRound,
-  SoloScoreInput
+  SoloScoreInput,
+  Theme
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -288,6 +290,83 @@ export function useListPublicRooms<TData = Awaited<ReturnType<typeof listPublicR
 
 
 
+export const getListThemesUrl = () => {
+
+
+
+
+  return `/api/game/themes`
+}
+
+/**
+ * @summary Selectable game themes (brands, football clubs, movie posters, video games...)
+ */
+export const listThemes = async ( options?: Parameters<typeof customFetch>[1]): Promise<Theme[]> => {
+
+  return customFetch<Theme[]>(getListThemesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListThemesQueryKey = () => {
+    return [
+    `/api/game/themes`
+    ] as const;
+    }
+
+
+export const getListThemesQueryOptions = <TData = Awaited<ReturnType<typeof listThemes>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listThemes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListThemesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listThemes>>> = ({ signal }) => listThemes({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listThemes>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListThemesQueryResult = NonNullable<Awaited<ReturnType<typeof listThemes>>>
+export type ListThemesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Selectable game themes (brands, football clubs, movie posters, video games...)
+ */
+
+export function useListThemes<TData = Awaited<ReturnType<typeof listThemes>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listThemes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListThemesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getListSoloLogosUrl = () => {
 
 
@@ -297,7 +376,7 @@ export const getListSoloLogosUrl = () => {
 }
 
 /**
- * @summary Demonstration logo set for solo games
+ * @summary Full catalog dump across all themes, for the internal /logo-audit QA tool only
  */
 export const listSoloLogos = async ( options?: Parameters<typeof customFetch>[1]): Promise<Logo[]> => {
 
@@ -344,7 +423,7 @@ export type ListSoloLogosQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Demonstration logo set for solo games
+ * @summary Full catalog dump across all themes, for the internal /logo-audit QA tool only
  */
 
 export function useListSoloLogos<TData = Awaited<ReturnType<typeof listSoloLogos>>, TError = ErrorType<unknown>>(
@@ -537,20 +616,27 @@ export const useSubmitSoloScore = <TError = ErrorType<unknown>,
       return useMutation(getSubmitSoloScoreMutationOptions(options));
     }
 
-export const getListSoloRoundsUrl = () => {
+export const getListSoloRoundsUrl = (params: ListSoloRoundsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/game/solo/logos`
+  return stringifiedParams.length > 0 ? `/api/game/solo/logos?${stringifiedParams}` : `/api/game/solo/logos`
 }
 
 /**
  * @summary Playable solo round pool (answers withheld until guessed or revealed)
  */
-export const listSoloRounds = async ( options?: Parameters<typeof customFetch>[1]): Promise<SoloRound[]> => {
+export const listSoloRounds = async (params: ListSoloRoundsParams, options?: Parameters<typeof customFetch>[1]): Promise<SoloRound[]> => {
 
-  return customFetch<SoloRound[]>(getListSoloRoundsUrl(),
+  return customFetch<SoloRound[]>(getListSoloRoundsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -563,23 +649,23 @@ export const listSoloRounds = async ( options?: Parameters<typeof customFetch>[1
 
 
 
-export const getListSoloRoundsQueryKey = () => {
+export const getListSoloRoundsQueryKey = (params?: ListSoloRoundsParams,) => {
     return [
-    `/api/game/solo/logos`
+    `/api/game/solo/logos`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListSoloRoundsQueryOptions = <TData = Awaited<ReturnType<typeof listSoloRounds>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSoloRounds>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListSoloRoundsQueryOptions = <TData = Awaited<ReturnType<typeof listSoloRounds>>, TError = ErrorType<unknown>>(params: ListSoloRoundsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSoloRounds>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListSoloRoundsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListSoloRoundsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSoloRounds>>> = ({ signal }) => listSoloRounds({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSoloRounds>>> = ({ signal }) => listSoloRounds(params, { signal, ...requestOptions });
 
 
 
@@ -597,11 +683,11 @@ export type ListSoloRoundsQueryError = ErrorType<unknown>
  */
 
 export function useListSoloRounds<TData = Awaited<ReturnType<typeof listSoloRounds>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSoloRounds>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params: ListSoloRoundsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSoloRounds>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListSoloRoundsQueryOptions(options)
+  const queryOptions = getListSoloRoundsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

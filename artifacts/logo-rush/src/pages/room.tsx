@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useParams } from 'wouter';
+import { useTranslation } from 'react-i18next';
+import { useListThemes } from '@workspace/api-client-react';
+import type { Locale } from '@/i18n';
 import { useGameStore } from '@/store/useGameStore';
 import { getSocket } from '@/lib/socket';
 import { Button } from '@/components/ui/button';
@@ -18,15 +21,19 @@ type Player = { id: string; nickname: string; score: number; connected?: boolean
 type RoomState = 'waiting' | 'playing' | 'round_recap' | 'results';
 
 export default function Room() {
+  const { t, i18n } = useTranslation();
+  const locale = (i18n.language?.slice(0, 2) as Locale) || 'fr';
   const { code } = useParams();
   const [, setLocation] = useLocation();
   const { nickname, sessionId, ensureSessionId, setNickname } = useGameStore();
   const { toast } = useToast();
+  const { data: themes } = useListThemes();
   const [localName, setLocalName] = useState('');
 
   const [gameState, setGameState] = useState<RoomState>('waiting');
   const [players, setPlayers] = useState<Player[]>([]);
   const [roomName, setRoomName] = useState('');
+  const [themeId, setThemeId] = useState('brands');
   const [hostId, setHostId] = useState('');
   const [myPlayerId, setMyPlayerId] = useState('');
   
@@ -62,7 +69,7 @@ export default function Room() {
     // Join room
     socket.emit('room:join', { code, nickname, sessionId }, (result: { ok: boolean; room?: any; playerId?: string; error?: string }) => {
       if (!result.ok) {
-        toast({ variant: 'destructive', description: result.error || 'Impossible de rejoindre le salon.' });
+        toast({ variant: 'destructive', description: result.error || t('room.joinError') });
         setLocation('/multiplayer');
         return;
       }
@@ -72,6 +79,7 @@ export default function Room() {
 
     const handleRoomUpdate = (data: any) => {
       if (data.name) setRoomName(data.name);
+      if (data.themeId) setThemeId(data.themeId);
       if (data.hostId) setHostId(data.hostId);
       if (data.players) {
         // Transform Object to Array if needed, assuming backend sends array or map
@@ -175,10 +183,10 @@ export default function Room() {
   // The "primary" setting is manches (FFA) or points pour gagner (duel) — the
   // server only applies whichever one matches the room's own mode, so it's
   // safe to always send both.
-  const updateRoomSettings = (nextPrimaryValue: number, nextRoundDuration: number) => {
+  const updateRoomSettings = (nextPrimaryValue: number, nextRoundDuration: number, nextThemeId = themeId) => {
     getSocket().emit(
       'room:settings',
-      { code, roundCount: nextPrimaryValue, targetScore: nextPrimaryValue, roundDuration: nextRoundDuration },
+      { code, themeId: nextThemeId, roundCount: nextPrimaryValue, targetScore: nextPrimaryValue, roundDuration: nextRoundDuration },
       (result: { ok: boolean; error?: string }) => {
         if (!result.ok) toast({ variant: 'destructive', description: result.error });
       },
@@ -201,7 +209,7 @@ export default function Room() {
 
   const copyCode = () => {
     navigator.clipboard.writeText(code || '');
-    toast({ description: 'Code copié !' });
+    toast({ description: t('room.codeCopied') });
   };
 
   const amIHost = myPlayerId === hostId;
@@ -221,16 +229,16 @@ export default function Room() {
           <div className="p-6">
             <form onSubmit={handleSaveName} className="space-y-6">
               <div className="space-y-2 text-center">
-                <h2 className="text-2xl font-semibold">Choisissez un pseudo</h2>
+                <h2 className="text-2xl font-semibold">{t('home.chooseNickname')}</h2>
                 <p className="text-sm text-muted-foreground">
-                  pour rejoindre le salon <span className="font-mono text-primary">{code}</span>
+                  {t('room.joinPrompt')} <span className="font-mono text-primary">{code}</span>
                 </p>
               </div>
               <div className="space-y-4">
                 <Input
                   value={localName}
                   onChange={(e) => setLocalName(e.target.value)}
-                  placeholder="Ex: FlashDevin, LogoMaster..."
+                  placeholder={t('home.nicknamePlaceholder')}
                   className="text-center text-lg h-14 bg-background/50 border-primary/30 focus-visible:ring-primary"
                   minLength={2}
                   maxLength={20}
@@ -244,10 +252,10 @@ export default function Room() {
                   size="lg"
                   data-testid="button-save-nickname"
                 >
-                  Rejoindre le salon
+                  {t('room.joinAction')}
                 </Button>
                 <Button type="button" variant="ghost" className="w-full" onClick={() => setLocation('/')}>
-                  <ArrowLeft className="mr-2 h-4 w-4" /> Retour à l'accueil
+                  <ArrowLeft className="mr-2 h-4 w-4" /> {t('room.backHome')}
                 </Button>
               </div>
             </form>
@@ -262,11 +270,11 @@ export default function Room() {
       <div className="flex-1 flex flex-col items-center py-8 w-full max-w-5xl mx-auto">
         <div className="w-full flex justify-between items-center mb-8">
           <Button variant="ghost" onClick={() => setLocation('/multiplayer')}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Quitter
+            <ArrowLeft className="mr-2 h-4 w-4" /> {t('room.leave')}
           </Button>
           <div className="text-center">
             <h1 className="text-3xl font-bold flex items-center justify-center gap-2">
-              {roomName || 'Salon'}
+              {roomName || t('room.defaultName')}
               {mode === 'duel' && (
                 <span className="flex items-center gap-1 text-xs font-semibold bg-secondary/20 text-secondary px-2 py-1 rounded-md align-middle">
                   <Swords className="h-3.5 w-3.5" /> Duel 1v1
@@ -274,7 +282,7 @@ export default function Room() {
               )}
             </h1>
             <div className="flex items-center justify-center gap-2 mt-2">
-              <span className="text-muted-foreground">Code:</span>
+              <span className="text-muted-foreground">{t('room.code')}</span>
               <span className="font-mono bg-primary/20 text-primary px-3 py-1 rounded-md text-lg tracking-widest">{code}</span>
               <Button variant="ghost" size="icon" onClick={copyCode}><Copy className="h-4 w-4" /></Button>
             </div>
@@ -287,8 +295,8 @@ export default function Room() {
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" /> 
-                  Joueurs ({players.length})
+                  <Users className="h-5 w-5 text-primary" />
+                  {t('room.players', { count: players.length })}
                 </h2>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -299,7 +307,7 @@ export default function Room() {
                     </div>
                     <div className="flex-1 overflow-hidden">
                       <p className="font-medium truncate">{p.nickname}</p>
-                      {p.id === hostId && <span className="text-xs text-primary">Hôte</span>}
+                      {p.id === hostId && <span className="text-xs text-primary">{t('room.host')}</span>}
                     </div>
                   </div>
                 ))}
@@ -312,11 +320,29 @@ export default function Room() {
               {amIHost ? (
                 <>
                   <Play className="h-12 w-12 text-primary mb-4" />
-                  <h3 className="font-bold text-lg mb-2">Prêt ?</h3>
-                  <p className="text-sm text-muted-foreground mb-4">Réglez la partie puis lancez-la.</p>
+                  <h3 className="font-bold text-lg mb-2">{t('room.readyTitle')}</h3>
+                  <p className="text-sm text-muted-foreground mb-4">{t('room.readySubtitle')}</p>
+                  {themes && themes.length > 1 && (
+                    <div className="w-full mb-4">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('common.theme')}</p>
+                      <div className="grid grid-cols-2 gap-1">
+                        {themes.map((theme) => (
+                          <Button
+                            key={theme.id}
+                            type="button"
+                            size="sm"
+                            variant={themeId === theme.id ? 'default' : 'outline'}
+                            onClick={() => updateRoomSettings(mode === 'duel' ? targetScore : totalRounds, roundDuration, theme.id)}
+                          >
+                            {locale === 'en' ? theme.nameEn : theme.nameFr}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="w-full mb-4">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {mode === 'duel' ? 'Points pour gagner' : 'Manches'}
+                      {mode === 'duel' ? 'Points pour gagner' : t('room.roundsPerGame')}
                     </p>
                     <div className="grid grid-cols-4 gap-1">
                       {[5, 10, 15, 20].map((value) => (
@@ -333,7 +359,7 @@ export default function Room() {
                     </div>
                   </div>
                   <div className="w-full mb-6">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Temps par manche</p>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('room.timePerRound')}</p>
                     <div className="grid grid-cols-3 gap-1">
                       {[15, 20, 30].map((value) => (
                         <Button
@@ -354,7 +380,7 @@ export default function Room() {
                     onClick={handleStartGame}
                     disabled={mode === 'duel' ? players.length < 2 : players.length < 1}
                   >
-                    Démarrer
+                    {t('room.start')}
                   </Button>
                   {mode === 'duel' && players.length < 2 && (
                     <p className="mt-2 text-xs text-muted-foreground">En attente d'un second joueur...</p>
@@ -363,8 +389,8 @@ export default function Room() {
               ) : (
                 <>
                   <Clock className="h-12 w-12 text-secondary mb-4 animate-pulse" />
-                  <h3 className="font-bold text-lg mb-2">En attente de l'hôte</h3>
-                  <p className="text-sm text-muted-foreground">La partie va bientôt commencer...</p>
+                  <h3 className="font-bold text-lg mb-2">{t('room.waitingForHostTitle')}</h3>
+                  <p className="text-sm text-muted-foreground">{t('room.waitingForHostSubtitle')}</p>
                 </>
               )}
             </Card>
@@ -389,14 +415,14 @@ export default function Room() {
             </>
           ) : (
             <>
-              <p className="text-sm text-muted-foreground font-semibold uppercase tracking-wider">Manche</p>
+              <p className="text-sm text-muted-foreground font-semibold uppercase tracking-wider">{t('room.round')}</p>
               <p className="text-2xl font-bold">{roundNumber} <span className="text-muted-foreground text-lg">/ {totalRounds}</span></p>
             </>
           )}
         </div>
         {gameState === 'playing' && <ReportLogoButton logoId={currentLogo?.token} />}
         <div className="text-right">
-          <p className="text-sm text-muted-foreground font-semibold uppercase tracking-wider">Temps</p>
+          <p className="text-sm text-muted-foreground font-semibold uppercase tracking-wider">{t('room.time')}</p>
           <p className={cn("text-3xl font-mono font-bold", timeLeft < 5 ? "text-destructive" : "text-primary")}>
             {timeLeft.toFixed(1)}s
           </p>
@@ -418,7 +444,15 @@ export default function Room() {
                   exit={{ scale: 1.1, opacity: 0 }}
                   className="w-full h-full flex items-center justify-center relative p-8"
                 >
-                  <PixelatedLogo src={currentLogo.imageUrl} progress={revealProgress} reveal={gameState !== 'playing'} />
+                  <PixelatedLogo
+                    src={currentLogo.imageUrl}
+                    progress={revealProgress}
+                    reveal={gameState !== 'playing'}
+                    aspectRatio={(() => {
+                      const theme = themes?.find((t) => t.id === themeId);
+                      return theme ? { w: theme.aspectW, h: theme.aspectH } : undefined;
+                    })()}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -429,16 +463,16 @@ export default function Room() {
                 animate={{ opacity: 1 }}
                 className="absolute inset-0 bg-background/85 backdrop-blur-md flex flex-col items-center justify-center text-center p-6 z-10"
               >
-                <h2 className="text-sm font-bold tracking-widest text-primary uppercase mb-2">Réponse</h2>
+                <h2 className="text-sm font-bold tracking-widest text-primary uppercase mb-2">{t('room.answer')}</h2>
                 <p className="text-5xl font-black mb-8 text-foreground">{roundAnswer}</p>
-                
+
                 <div className="flex gap-4">
                   <div className="bg-card/50 px-6 py-4 rounded-xl border border-border/50 text-center">
-                    <p className="text-muted-foreground text-sm mb-1">Votre Statut</p>
+                    <p className="text-muted-foreground text-sm mb-1">{t('room.yourStatus')}</p>
                     {guessState === 'correct' ? (
-                      <p className="text-green-500 font-bold flex items-center gap-2"><Check className="w-5 h-5"/> Trouvé</p>
+                      <p className="text-green-500 font-bold flex items-center gap-2"><Check className="w-5 h-5"/> {t('room.found')}</p>
                     ) : (
-                      <p className="text-destructive font-bold flex items-center gap-2"><X className="w-5 h-5"/> Raté</p>
+                      <p className="text-destructive font-bold flex items-center gap-2"><X className="w-5 h-5"/> {t('room.missed')}</p>
                     )}
                   </div>
                 </div>
@@ -455,7 +489,7 @@ export default function Room() {
                 <h2 className="text-4xl font-bold mb-8 text-center">
                   {mode === 'duel' && sortedPlayers[0]
                     ? `🏆 ${sortedPlayers[0].nickname} remporte le duel !`
-                    : 'Partie Terminée'}
+                    : t('room.gameOver')}
                 </h2>
                 
                 <div className="w-full max-w-md space-y-3 mb-8">
@@ -478,13 +512,13 @@ export default function Room() {
                 <div className="flex flex-col items-center gap-3">
                   {amIHost ? (
                     <Button size="lg" className="h-14 px-10 text-lg" onClick={handleRestartGame}>
-                      <Play className="mr-2 h-5 w-5" /> Rejouer
+                      <Play className="mr-2 h-5 w-5" /> {t('room.playAgain')}
                     </Button>
                   ) : (
-                    <p className="text-sm text-muted-foreground">En attente de l'hôte pour relancer une partie...</p>
+                    <p className="text-sm text-muted-foreground">{t('room.waitingForHostRestart')}</p>
                   )}
                   <Button variant="outline" size="lg" onClick={() => setLocation('/')}>
-                    Retour à l'accueil
+                    {t('room.backHome')}
                   </Button>
                 </div>
               </motion.div>
@@ -500,9 +534,9 @@ export default function Room() {
               onChange={(e) => setGuess(e.target.value)}
               disabled={gameState !== 'playing' || guessState === 'correct'}
               placeholder={
-                gameState !== 'playing' ? "En attente..." :
-                guessState === 'correct' ? "Vous avez trouvé !" : 
-                "Tapez votre réponse..."
+                gameState !== 'playing' ? t('room.waitingPlaceholder') :
+                guessState === 'correct' ? t('room.foundPlaceholder') :
+                t('room.guessPlaceholder')
               }
               className={cn(
                 "h-16 text-xl text-center shadow-lg transition-colors",
@@ -516,7 +550,7 @@ export default function Room() {
               className="absolute right-2 top-2 h-12 px-8"
               disabled={gameState !== 'playing' || !guess.trim() || guessState === 'correct'}
             >
-              Go
+              {t('common.go')}
             </Button>
           </form>
         </div>
@@ -525,7 +559,7 @@ export default function Room() {
         <Card className="lg:col-span-1 bg-card/40 backdrop-blur-md border-primary/20 flex flex-col">
           <div className="p-4 border-b border-border/50 flex items-center gap-2">
             <Trophy className="h-5 w-5 text-primary" />
-            <h3 className="font-bold">Classement</h3>
+            <h3 className="font-bold">{t('room.leaderboard')}</h3>
           </div>
           <div className="flex-1 p-2 space-y-2 overflow-y-auto">
             {sortedPlayers.map((p, i) => (

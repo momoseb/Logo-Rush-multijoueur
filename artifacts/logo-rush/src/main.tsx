@@ -4,6 +4,7 @@ import { setBaseUrl } from '@workspace/api-client-react';
 import App from './App';
 import { ErrorBoundary } from '@/components/error-boundary';
 
+import './i18n';
 import './index.css';
 
 // When the frontend and API are deployed on different origins (e.g. Vercel +

@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
+import { useTranslation } from 'react-i18next';
+import type { Locale } from '@/i18n';
 import {
   getGetSoloLeaderboardQueryKey,
   useGetSoloLeaderboard,
   useListSoloRounds,
+  useListThemes,
   useRevealSoloRound,
   useSubmitSoloGuess,
   useSubmitSoloScore,
@@ -27,10 +30,18 @@ type RoundCount = 5 | 10 | 15 | 20;
 type RoundDuration = 15 | 20 | 30;
 
 export default function Solo() {
+  const { t, i18n } = useTranslation();
+  const locale = (i18n.language?.slice(0, 2) as Locale) || 'fr';
   const [, setLocation] = useLocation();
   const nickname = useGameStore((state) => state.nickname);
   const queryClient = useQueryClient();
-  const { data: rounds, isLoading } = useListSoloRounds();
+  const { data: themes } = useListThemes();
+  const [themeId, setThemeId] = useState<string>('brands');
+  useEffect(() => {
+    if (themes?.length && !themes.some((t) => t.id === themeId)) setThemeId(themes[0]!.id);
+  }, [themes, themeId]);
+  const currentTheme = themes?.find((t) => t.id === themeId);
+  const { data: rounds, isLoading } = useListSoloRounds({ themeId });
 
   const [gameState, setGameState] = useState<GameState>('setup');
   const [currentRound, setCurrentRound] = useState(0);
@@ -53,7 +64,7 @@ export default function Solo() {
   const startTimeRef = useRef<number>(0);
   const guessInputRef = useRef<HTMLInputElement>(null);
   const submittedResultRef = useRef(false);
-  const leaderboardParams = { roundCount, roundDuration };
+  const leaderboardParams = { themeId, roundCount, roundDuration };
   const { data: leaderboard, isLoading: isLeaderboardLoading, isError: isLeaderboardError } = useGetSoloLeaderboard(leaderboardParams);
   const submitScore = useSubmitSoloScore({
     mutation: {
@@ -117,7 +128,7 @@ export default function Solo() {
 
   const handleTimeout = async (round: SoloRound) => {
     try {
-      const result = await revealMutation.mutateAsync({ data: { token: round.token } });
+      const result = await revealMutation.mutateAsync({ data: { token: round.token, locale } });
       endRound('lost', result.answer);
     } catch {
       endRound('lost', '');
@@ -140,7 +151,7 @@ export default function Solo() {
     if (gameState !== 'playing' || !currentLogo || !guessValue || guessMutation.isPending) return;
 
     try {
-      const result = await guessMutation.mutateAsync({ data: { token: currentLogo.token, guess: guessValue } });
+      const result = await guessMutation.mutateAsync({ data: { token: currentLogo.token, guess: guessValue, locale } });
       if (result.correct) {
         endRound('won', result.answer || '');
       } else {
@@ -180,11 +191,12 @@ export default function Solo() {
       data: {
         nickname,
         score,
+        themeId,
         roundCount,
         roundDuration,
       },
     });
-  }, [gameState, nickname, roundCount, roundDuration, score]);
+  }, [gameState, nickname, themeId, roundCount, roundDuration, score]);
 
   if (isLoading) {
     return (
@@ -198,28 +210,40 @@ export default function Solo() {
     return (
       <div className="flex-1 flex flex-col items-center py-12 space-y-8">
         <Button variant="ghost" className="absolute top-4 left-4" onClick={() => setLocation('/')}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+          <ArrowLeft className="mr-2 h-4 w-4" /> {t('common.back')}
         </Button>
         <div className="text-center space-y-4">
-          <h1 className="text-5xl font-bold">Mode Solo</h1>
-          <p className="text-xl text-muted-foreground">Configurez votre défi avant de jouer.</p>
+          <h1 className="text-5xl font-bold">{t('solo.title')}</h1>
+          <p className="text-xl text-muted-foreground">{t('solo.setupSubtitle')}</p>
         </div>
         <Card className="w-full max-w-xl space-y-6 p-6 bg-card/50 backdrop-blur-md">
+          {themes && themes.length > 1 && (
+            <div>
+              <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t('common.theme')}</p>
+              <div className="grid grid-cols-2 gap-2">
+                {themes.map((theme) => (
+                  <Button key={theme.id} type="button" variant={themeId === theme.id ? 'default' : 'outline'} onClick={() => setThemeId(theme.id)}>
+                    {locale === 'en' ? theme.nameEn : theme.nameFr}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
           <div>
-            <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Nombre de manches</p>
+            <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t('common.roundCount')}</p>
             <div className="grid grid-cols-4 gap-2">
               {([5, 10, 15, 20] as RoundCount[]).map(value => <Button key={value} variant={roundCount === value ? 'default' : 'outline'} onClick={() => setRoundCount(value)}>{value}</Button>)}
             </div>
           </div>
           <div>
-            <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Durée d'une manche</p>
+            <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t('common.roundDuration')}</p>
             <div className="grid grid-cols-3 gap-2">
               {([15, 20, 30] as RoundDuration[]).map(value => <Button key={value} variant={roundDuration === value ? 'secondary' : 'outline'} onClick={() => setRoundDuration(value)}>{value} s</Button>)}
             </div>
           </div>
         </Card>
         <Button size="lg" className="h-16 px-12 text-2xl" onClick={startGame} disabled={!rounds?.length}>
-          Démarrer
+          {t('solo.start')}
         </Button>
         <div className="w-full max-w-xl">
           <SoloLeaderboard entries={leaderboard} isLoading={isLeaderboardLoading} isError={isLeaderboardError} />
@@ -231,17 +255,17 @@ export default function Solo() {
   if (gameState === 'results') {
     return (
       <div className="flex-1 flex flex-col items-center justify-center space-y-8">
-        <h1 className="text-5xl font-bold">Partie Terminée !</h1>
+        <h1 className="text-5xl font-bold">{t('solo.gameOver')}</h1>
         <Card className="p-8 text-center bg-card/50 backdrop-blur-md border-primary/20">
-          <p className="text-xl text-muted-foreground mb-2">Score Final</p>
+          <p className="text-xl text-muted-foreground mb-2">{t('solo.finalScore')}</p>
           <p className="text-6xl font-extrabold text-primary">{score}</p>
         </Card>
         <div className="flex gap-4">
           <Button variant="outline" size="lg" onClick={() => setLocation('/')}>
-            Menu Principal
+            {t('solo.mainMenu')}
           </Button>
           <Button size="lg" onClick={startGame}>
-            Rejouer
+            {t('solo.playAgain')}
           </Button>
         </div>
         <div className="w-full max-w-xl">
@@ -262,11 +286,11 @@ export default function Solo() {
     <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl mx-auto space-y-8">
       <div className="w-full flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold tracking-wider uppercase text-muted-foreground">Manche</span>
+          <span className="text-sm font-semibold tracking-wider uppercase text-muted-foreground">{t('solo.round')}</span>
           <span className="text-2xl font-bold">{currentRound + 1} / {gameRounds.length}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold tracking-wider uppercase text-muted-foreground">Score</span>
+          <span className="text-sm font-semibold tracking-wider uppercase text-muted-foreground">{t('solo.score')}</span>
           <span className="text-2xl font-bold text-primary">{score}</span>
         </div>
       </div>
@@ -290,7 +314,12 @@ export default function Solo() {
               exit={{ scale: 1.1, opacity: 0 }}
               className="w-full h-full flex items-center justify-center relative"
             >
-              <PixelatedLogo src={currentLogo.imageUrl} progress={revealProgress} reveal={gameState !== 'playing'} />
+              <PixelatedLogo
+                src={currentLogo.imageUrl}
+                progress={revealProgress}
+                reveal={gameState !== 'playing'}
+                aspectRatio={currentTheme ? { w: currentTheme.aspectW, h: currentTheme.aspectH } : undefined}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -310,10 +339,10 @@ export default function Solo() {
               {roundAnswer}
             </h2>
             <p className="text-lg text-muted-foreground mb-8">
-              {roundResult === 'won' ? `Trouvé en ${(roundDuration - timeLeft).toFixed(1)}s` : 'Temps écoulé !'}
+              {roundResult === 'won' ? t('solo.foundIn', { seconds: (roundDuration - timeLeft).toFixed(1) }) : t('solo.timeUp')}
             </p>
             <Button size="lg" onClick={nextRound}>
-              Manche suivante <span className="ml-2 text-xs opacity-70">Entrée ↵</span>
+              {t('solo.nextRound')} <span className="ml-2 text-xs opacity-70">{t('solo.enterKey')} ↵</span>
               <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
             </Button>
           </motion.div>
@@ -326,7 +355,7 @@ export default function Solo() {
           autoFocus
           value={guess}
           onChange={(e) => setGuess(e.target.value)}
-          placeholder="Taper la marque ici..."
+          placeholder={t('solo.guessPlaceholder')}
           className="h-14 text-xl text-center bg-card/50 backdrop-blur-md"
           disabled={gameState !== 'playing' || guessMutation.isPending}
           data-testid="input-solo-guess"
@@ -337,7 +366,7 @@ export default function Solo() {
           className="h-14 px-8 text-lg font-bold"
           data-testid="button-solo-submit"
         >
-          Valider
+          {t('solo.submit')}
         </Button>
       </form>
     </div>

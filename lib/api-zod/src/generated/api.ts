@@ -29,6 +29,7 @@ export const GetGameStatsResponse = zod.object({
 export const ListPublicRoomsResponseItem = zod.object({
   "code": zod.string(),
   "name": zod.string(),
+  "themeId": zod.string(),
   "hostName": zod.string(),
   "playerCount": zod.number().int(),
   "maxPlayers": zod.number().int(),
@@ -42,13 +43,30 @@ export const ListPublicRoomsResponse = zod.array(ListPublicRoomsResponseItem)
 
 
 /**
- * @summary Demonstration logo set for solo games
+ * @summary Selectable game themes (brands, football clubs, movie posters, video games...)
+ */
+export const ListThemesResponseItem = zod.object({
+  "id": zod.string(),
+  "nameFr": zod.string(),
+  "nameEn": zod.string(),
+  "imageProvider": zod.string(),
+  "aspectW": zod.number().int(),
+  "aspectH": zod.number().int()
+})
+export const ListThemesResponse = zod.array(ListThemesResponseItem)
+
+
+/**
+ * @summary Full catalog dump across all themes, for the internal /logo-audit QA tool only
  */
 export const ListSoloLogosResponseItem = zod.object({
   "id": zod.string(),
-  "answer": zod.string(),
-  "aliases": zod.array(zod.string()),
-  "category": zod.string(),
+  "themeId": zod.string(),
+  "answerFr": zod.string(),
+  "answerEn": zod.string(),
+  "aliasesFr": zod.array(zod.string()),
+  "aliasesEn": zod.array(zod.string()),
+  "category": zod.string().optional(),
   "difficulty": zod.enum(['easy', 'medium', 'hard']),
   "imageUrl": zod.string()
 })
@@ -59,6 +77,7 @@ export const ListSoloLogosResponse = zod.array(ListSoloLogosResponseItem)
  * @summary Top five solo scores for one game mode
  */
 export const GetSoloLeaderboardQueryParams = zod.object({
+  "themeId": zod.coerce.string(),
   "roundCount": zod.union([zod.literal(5),zod.literal(10),zod.literal(15),zod.literal(20)]),
   "roundDuration": zod.union([zod.literal(15),zod.literal(20),zod.literal(30)])
 })
@@ -67,6 +86,7 @@ export const GetSoloLeaderboardResponseItem = zod.object({
   "id": zod.number().int(),
   "nickname": zod.string(),
   "score": zod.number().int(),
+  "themeId": zod.string(),
   "roundCount": zod.number().int(),
   "roundDuration": zod.number().int(),
   "createdAt": zod.coerce.date()
@@ -87,6 +107,7 @@ export const submitSoloScoreBodyScoreMax = 20000;
 export const SubmitSoloScoreBody = zod.object({
   "nickname": zod.string().min(1).max(submitSoloScoreBodyNicknameMax),
   "score": zod.number().int().min(submitSoloScoreBodyScoreMin).max(submitSoloScoreBodyScoreMax),
+  "themeId": zod.string(),
   "roundCount": zod.union([zod.literal(5),zod.literal(10),zod.literal(15),zod.literal(20)]),
   "roundDuration": zod.union([zod.literal(15),zod.literal(20),zod.literal(30)])
 })
@@ -95,6 +116,7 @@ export const SubmitSoloScoreResponseItem = zod.object({
   "id": zod.number().int(),
   "nickname": zod.string(),
   "score": zod.number().int(),
+  "themeId": zod.string(),
   "roundCount": zod.number().int(),
   "roundDuration": zod.number().int(),
   "createdAt": zod.coerce.date()
@@ -105,9 +127,14 @@ export const SubmitSoloScoreResponse = zod.array(SubmitSoloScoreResponseItem).ma
 /**
  * @summary Playable solo round pool (answers withheld until guessed or revealed)
  */
+export const ListSoloRoundsQueryParams = zod.object({
+  "themeId": zod.coerce.string()
+})
+
 export const ListSoloRoundsResponseItem = zod.object({
   "token": zod.string(),
-  "category": zod.string(),
+  "themeId": zod.string(),
+  "category": zod.string().optional(),
   "difficulty": zod.enum(['easy', 'medium', 'hard']),
   "imageUrl": zod.string()
 })
@@ -124,7 +151,8 @@ export const submitSoloGuessBodyGuessMax = 80;
 
 export const SubmitSoloGuessBody = zod.object({
   "token": zod.string().min(1),
-  "guess": zod.string().min(1).max(submitSoloGuessBodyGuessMax)
+  "guess": zod.string().min(1).max(submitSoloGuessBodyGuessMax),
+  "locale": zod.enum(['fr', 'en']).optional()
 })
 
 export const SubmitSoloGuessResponse = zod.object({
@@ -140,7 +168,8 @@ export const SubmitSoloGuessResponse = zod.object({
 
 
 export const RevealSoloRoundBody = zod.object({
-  "token": zod.string().min(1)
+  "token": zod.string().min(1),
+  "locale": zod.enum(['fr', 'en']).optional()
 })
 
 export const RevealSoloRoundResponse = zod.object({

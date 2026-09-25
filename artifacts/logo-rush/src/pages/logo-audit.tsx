@@ -10,8 +10,8 @@ import { apiUrl } from '@/lib/api-base';
 
 type Logo = {
   id: string;
-  domain: string;
-  answer: string;
+  themeId: string;
+  answerFr: string;
   imageUrl: string;
 };
 
@@ -30,7 +30,7 @@ function AuditLogo({ logo, flagged, onToggleFlag }: { logo: Logo; flagged: boole
   }, [logo.imageUrl]);
 
   const handleError = () => {
-    if (state === 'loading' && logo.imageUrl.startsWith('brandfetch://')) {
+    if (state === 'loading' && (logo.imageUrl.startsWith('brandfetch://') || logo.imageUrl.startsWith('logotoken://'))) {
       setState('lettermark');
       setSrc(getBrandfetchUrl(logo.imageUrl, true));
     } else {
@@ -45,7 +45,7 @@ function AuditLogo({ logo, flagged, onToggleFlag }: { logo: Logo; flagged: boole
           {state !== 'missing' ? (
             <img
               src={src}
-              alt={`Logo ${logo.answer}`}
+              alt={`Logo ${logo.answerFr}`}
               className="h-full w-full object-contain"
               onLoad={() => setState((current) => current === 'lettermark' ? 'lettermark' : 'valid')}
               onError={handleError}
@@ -58,12 +58,12 @@ function AuditLogo({ logo, flagged, onToggleFlag }: { logo: Logo; flagged: boole
         </div>
         <div className="min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <h2 className="truncate font-bold" data-testid={`text-logo-name-${logo.id}`}>{logo.answer}</h2>
+            <h2 className="truncate font-bold" data-testid={`text-logo-name-${logo.id}`}>{logo.answerFr}</h2>
             {state === 'valid' && <Badge variant="secondary"><Check className="mr-1 h-3 w-3" />OK</Badge>}
             {state === 'lettermark' && <Badge className="bg-amber-500 text-black"><AlertTriangle className="mr-1 h-3 w-3" />Lettermark</Badge>}
             {state === 'missing' && <Badge variant="destructive">Absente</Badge>}
           </div>
-          <p className="truncate text-sm text-muted-foreground" data-testid={`text-logo-domain-${logo.id}`}>{logo.domain}</p>
+          <p className="truncate text-sm text-muted-foreground" data-testid={`text-logo-domain-${logo.id}`}>{logo.themeId}</p>
         </div>
         <Button
           type="button"
@@ -110,8 +110,8 @@ export default function LogoAudit() {
     const normalized = query.trim().toLocaleLowerCase();
     if (!normalized) return logos;
     return logos.filter((logo) =>
-      logo.answer.toLocaleLowerCase().includes(normalized)
-      || logo.domain.toLocaleLowerCase().includes(normalized),
+      logo.answerFr.toLocaleLowerCase().includes(normalized)
+      || logo.themeId.toLocaleLowerCase().includes(normalized),
     );
   }, [logos, query]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -135,9 +135,9 @@ export default function LogoAudit() {
         </Button>
         <div>
           <p className="text-sm font-semibold uppercase tracking-widest text-primary">Outil interne</p>
-          <h1 className="text-4xl font-extrabold tracking-tight">Contrôle des 404 logos</h1>
+          <h1 className="text-4xl font-extrabold tracking-tight">Contrôle du catalogue ({logos.length} visuels)</h1>
           <p className="mt-2 text-muted-foreground">
-            Vérifiez le nom et le domaine attendus. Les images absentes et les lettermarks sont détectés automatiquement.
+            Vérifiez le nom attendu et le thème. Les images absentes et les lettermarks sont détectés automatiquement.
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

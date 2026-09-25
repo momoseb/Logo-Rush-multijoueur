@@ -10,6 +10,7 @@ export interface SoloLeaderboardEntry {
   id: number;
   nickname: string;
   score: number;
+  themeId: string;
   roundCount: number;
   roundDuration: number;
   createdAt: Date;

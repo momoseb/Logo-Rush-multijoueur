@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
+import { useTranslation } from 'react-i18next';
 import { useGetGameStats, getGetGameStatsQueryKey } from '@workspace/api-client-react';
 import { useGameStore } from '@/store/useGameStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
-import { Gamepad2, Users, Trophy, ChevronRight, Activity, Medal, ShieldCheck } from 'lucide-react';
+import { Gamepad2, Users, Trophy, ChevronRight, Activity, Medal, ShieldCheck, Info } from 'lucide-react';
 
 export default function Home() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { nickname, setNickname } = useGameStore();
   const [localName, setLocalName] = useState(nickname);
@@ -50,7 +52,7 @@ export default function Home() {
           </div>
         </motion.div>
         <p className="text-xl sm:text-2xl text-muted-foreground max-w-lg mx-auto font-medium">
-          Devinez les marques. Affrontez vos amis. Dominez le classement.
+          {t('home.tagline')}
         </p>
       </div>
 
@@ -59,27 +61,27 @@ export default function Home() {
           <CardContent className="pt-6">
             <form onSubmit={handleSaveName} className="space-y-6">
               <div className="space-y-2 text-center">
-                <h2 className="text-2xl font-semibold">Choisissez un pseudo</h2>
-                <p className="text-sm text-muted-foreground">Comment doit-on vous appeler sur le terrain ?</p>
+                <h2 className="text-2xl font-semibold">{t('home.chooseNickname')}</h2>
+                <p className="text-sm text-muted-foreground">{t('home.nicknamePrompt')}</p>
               </div>
               <div className="space-y-4">
-                <Input 
+                <Input
                   value={localName}
                   onChange={(e) => setLocalName(e.target.value)}
-                  placeholder="Ex: FlashDevin, LogoMaster..."
+                  placeholder={t('home.nicknamePlaceholder')}
                   className="text-center text-lg h-14 bg-background/50 border-primary/30 focus-visible:ring-primary"
                   minLength={2}
                   maxLength={20}
                   data-testid="input-nickname"
                 />
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={localName.trim().length < 2 || localName.trim().length > 20}
                   className="w-full h-14 text-lg font-bold"
                   size="lg"
                   data-testid="button-save-nickname"
                 >
-                  C'est parti <ChevronRight className="ml-2 h-5 w-5" />
+                  {t('home.start')} <ChevronRight className="ml-2 h-5 w-5" />
                 </Button>
               </div>
             </form>
@@ -97,8 +99,8 @@ export default function Home() {
                 <div className="h-16 w-16 rounded-full bg-primary/20 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                   <Gamepad2 className="h-8 w-8" />
                 </div>
-                <h3 className="text-2xl font-bold">Mode Solo</h3>
-                <p className="text-muted-foreground">Entraînez-vous à votre rythme. Le chrono est votre seul adversaire.</p>
+                <h3 className="text-2xl font-bold">{t('home.soloMode')}</h3>
+                <p className="text-muted-foreground">{t('home.soloDescription')}</p>
               </CardContent>
             </Card>
           </motion.div>
@@ -114,8 +116,8 @@ export default function Home() {
                 <div className="h-16 w-16 rounded-full bg-secondary/20 flex items-center justify-center text-secondary group-hover:bg-secondary group-hover:text-secondary-foreground transition-colors">
                   <Users className="h-8 w-8" />
                 </div>
-                <h3 className="text-2xl font-bold">Multijoueur</h3>
-                <p className="text-muted-foreground">Rejoignez un salon ou créez le vôtre pour défier vos amis.</p>
+                <h3 className="text-2xl font-bold">{t('home.multiplayer')}</h3>
+                <p className="text-muted-foreground">{t('home.multiplayerDescription')}</p>
               </CardContent>
             </Card>
           </motion.div>
@@ -134,8 +136,8 @@ export default function Home() {
               <Medal className="h-7 w-7" />
             </div>
             <div className="flex-1">
-              <h3 className="text-2xl font-bold">Leaderboard</h3>
-              <p className="text-muted-foreground">Consultez les meilleurs scores des parties solo et multijoueur.</p>
+              <h3 className="text-2xl font-bold">{t('home.leaderboard')}</h3>
+              <p className="text-muted-foreground">{t('home.leaderboardDescription')}</p>
             </div>
             <ChevronRight className="h-6 w-6 text-muted-foreground group-hover:text-accent transition-colors" />
           </CardContent>
@@ -146,17 +148,23 @@ export default function Home() {
       <div className="flex gap-4 sm:gap-8 opacity-80 mt-12">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Activity className="h-4 w-4 text-secondary animate-pulse" />
-          <span>{statsLoading ? '...' : stats?.playersOnline || 0} joueurs en ligne</span>
+          <span>{statsLoading ? '...' : t('home.playersOnline', { count: stats?.playersOnline || 0 })}</span>
         </div>
         <div className="flex items-center gap-2 text-sm font-medium">
           <Trophy className="h-4 w-4 text-primary" />
-          <span>{statsLoading ? '...' : stats?.gamesInProgress || 0} parties en cours</span>
+          <span>{statsLoading ? '...' : t('home.gamesInProgress', { count: stats?.gamesInProgress || 0 })}</span>
         </div>
       </div>
-      <Button variant="ghost" size="sm" onClick={() => setLocation('/logo-audit')} data-testid="button-open-logo-audit">
-        <ShieldCheck className="h-4 w-4" />
-        Contrôle des logos
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="sm" onClick={() => setLocation('/logo-audit')} data-testid="button-open-logo-audit">
+          <ShieldCheck className="h-4 w-4" />
+          {t('home.logoAudit')}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => setLocation('/about')} data-testid="button-open-about">
+          <Info className="h-4 w-4" />
+          {t('about.title')}
+        </Button>
+      </div>
     </motion.div>
   );
 }

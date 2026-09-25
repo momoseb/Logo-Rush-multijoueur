@@ -1,8 +1,10 @@
 import { type ReactNode, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { LanguageSwitcher } from '@/components/language-switcher';
 import { useHealthCheck, getHealthCheckQueryKey, getGetGameStatsQueryKey } from '@workspace/api-client-react';
 import {
   Route,
@@ -16,10 +18,12 @@ import Solo from '@/pages/solo';
 import Multiplayer from '@/pages/multiplayer';
 import Room from '@/pages/room';
 import Leaderboard from '@/pages/leaderboard';
+import About from '@/pages/about';
 import NotFound from '@/pages/not-found';
 import { getSocket } from '@/lib/socket';
 import { useGameStore } from '@/store/useGameStore';
 import LogoAudit from '@/pages/logo-audit';
+import AdminCatalog from '@/pages/admin-catalog';
 
 const queryClient = new QueryClient();
 
@@ -31,7 +35,9 @@ function Router() {
         <Route path="/solo" component={Solo} />
         <Route path="/multiplayer" component={Multiplayer} />
         <Route path="/leaderboard" component={Leaderboard} />
+        <Route path="/about" component={About} />
         <Route path="/logo-audit" component={LogoAudit} />
+        <Route path="/admin/catalog" component={AdminCatalog} />
         <Route path="/room/:code" component={Room} />
         <Route component={NotFound} />
       </Switch>
@@ -45,21 +51,22 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
 }
 
 function ServerStatus() {
+  const { t } = useTranslation();
   const { data, isError } = useHealthCheck({ query: { queryKey: getHealthCheckQueryKey(), refetchInterval: 30000 } });
-  
+
   if (isError || (data && data.status !== 'ok')) {
     return (
       <div className="fixed bottom-4 right-4 flex items-center gap-2 text-xs font-medium text-destructive bg-background/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-destructive/20">
         <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-        Hors ligne
+        {t('common.offline')}
       </div>
     );
   }
-  
+
   return (
     <div className="fixed bottom-4 right-4 flex items-center gap-2 text-xs font-medium text-muted-foreground bg-background/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-border/50">
       <div className="w-2 h-2 rounded-full bg-green-500" />
-      En ligne
+      {t('common.online')}
     </div>
   );
 }
@@ -102,6 +109,7 @@ function App() {
               <Router />
             </div>
             <ServerStatus />
+            <LanguageSwitcher />
           </main>
         </WouterRouter>
         <Toaster />

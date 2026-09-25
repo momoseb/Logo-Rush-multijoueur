@@ -9,9 +9,12 @@ import type { LogoDifficulty } from './logoDifficulty';
 
 export interface Logo {
   id: string;
-  answer: string;
-  aliases: string[];
-  category: string;
+  themeId: string;
+  answerFr: string;
+  answerEn: string;
+  aliasesFr: string[];
+  aliasesEn: string[];
+  category?: string;
   difficulty: LogoDifficulty;
   imageUrl: string;
 }

@@ -5,6 +5,7 @@
  * Logo Rush game API
  * OpenAPI spec version: 0.1.0
  */
+import type { SoloGuessInputLocale } from './soloGuessInputLocale';
 
 export interface SoloGuessInput {
   /** @minLength 1 */
@@ -14,4 +15,5 @@ export interface SoloGuessInput {
      * @maxLength 80
      */
   guess: string;
+  locale?: SoloGuessInputLocale;
 }

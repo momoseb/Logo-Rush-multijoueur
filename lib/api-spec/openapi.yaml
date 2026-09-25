@@ -47,11 +47,25 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/PublicRoom"
+  /game/themes:
+    get:
+      operationId: listThemes
+      tags: [game]
+      summary: Selectable game themes (brands, football clubs, movie posters, video games...)
+      responses:
+        "200":
+          description: Enabled themes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Theme"
   /game/logos:
     get:
       operationId: listSoloLogos
       tags: [game]
-      summary: Demonstration logo set for solo games
+      summary: Full catalog dump across all themes, for the internal /logo-audit QA tool only
       responses:
         "200":
           description: Logos
@@ -67,6 +81,11 @@ paths:
       tags: [game]
       summary: Top five solo scores for one game mode
       parameters:
+        - name: themeId
+          in: query
+          required: true
+          schema:
+            type: string
         - name: roundCount
           in: query
           required: true
@@ -114,6 +133,12 @@ paths:
       operationId: listSoloRounds
       tags: [game]
       summary: Playable solo round pool (answers withheld until guessed or revealed)
+      parameters:
+        - name: themeId
+          in: query
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: Round pool
@@ -197,11 +222,13 @@ components:
           type: integer
     PublicRoom:
       type: object
-      required: [code, name, hostName, playerCount, maxPlayers, mode, roundCount, roundDuration, targetScore, status]
+      required: [code, name, themeId, hostName, playerCount, maxPlayers, mode, roundCount, roundDuration, targetScore, status]
       properties:
         code:
           type: string
         name:
+          type: string
+        themeId:
           type: string
         hostName:
           type: string
@@ -221,15 +248,39 @@ components:
         status:
           type: string
           enum: [waiting, playing]
-    Logo:
+    Theme:
       type: object
-      required: [id, answer, aliases, category, difficulty, imageUrl]
+      required: [id, nameFr, nameEn, imageProvider, aspectW, aspectH]
       properties:
         id:
           type: string
-        answer:
+        nameFr:
           type: string
-        aliases:
+        nameEn:
+          type: string
+        imageProvider:
+          type: string
+        aspectW:
+          type: integer
+        aspectH:
+          type: integer
+    Logo:
+      type: object
+      required: [id, themeId, answerFr, answerEn, aliasesFr, aliasesEn, difficulty, imageUrl]
+      properties:
+        id:
+          type: string
+        themeId:
+          type: string
+        answerFr:
+          type: string
+        answerEn:
+          type: string
+        aliasesFr:
+          type: array
+          items:
+            type: string
+        aliasesEn:
           type: array
           items:
             type: string
@@ -242,7 +293,7 @@ components:
           type: string
     SoloLeaderboardEntry:
       type: object
-      required: [id, nickname, score, roundCount, roundDuration, createdAt]
+      required: [id, nickname, score, themeId, roundCount, roundDuration, createdAt]
       properties:
         id:
           type: integer
@@ -250,6 +301,8 @@ components:
           type: string
         score:
           type: integer
+        themeId:
+          type: string
         roundCount:
           type: integer
         roundDuration:
@@ -259,7 +312,7 @@ components:
           format: date-time
     SoloScoreInput:
       type: object
-      required: [nickname, score, roundCount, roundDuration]
+      required: [nickname, score, themeId, roundCount, roundDuration]
       properties:
         nickname:
           type: string
@@ -269,6 +322,8 @@ components:
           type: integer
           minimum: 0
           maximum: 20000
+        themeId:
+          type: string
         roundCount:
           type: integer
           enum: [5, 10, 15, 20]
@@ -277,9 +332,11 @@ components:
           enum: [15, 20, 30]
     SoloRound:
       type: object
-      required: [token, category, difficulty, imageUrl]
+      required: [token, themeId, difficulty, imageUrl]
       properties:
         token:
+          type: string
+        themeId:
           type: string
         category:
           type: string
@@ -299,6 +356,9 @@ components:
           type: string
           minLength: 1
           maxLength: 80
+        locale:
+          type: string
+          enum: [fr, en]
     SoloGuessResult:
       type: object
       required: [correct]
@@ -314,6 +374,9 @@ components:
         token:
           type: string
           minLength: 1
+        locale:
+          type: string
+          enum: [fr, en]
     SoloRevealResult:
       type: object
       required: [answer]

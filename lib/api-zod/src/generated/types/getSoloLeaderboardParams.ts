@@ -9,6 +9,7 @@ import type { GetSoloLeaderboardRoundCount } from './getSoloLeaderboardRoundCoun
 import type { GetSoloLeaderboardRoundDuration } from './getSoloLeaderboardRoundDuration';
 
 export type GetSoloLeaderboardParams = {
+themeId: string;
 roundCount: GetSoloLeaderboardRoundCount;
 roundDuration: GetSoloLeaderboardRoundDuration;
 };

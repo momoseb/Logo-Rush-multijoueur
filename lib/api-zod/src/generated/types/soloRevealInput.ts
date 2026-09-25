@@ -5,8 +5,10 @@
  * Logo Rush game API
  * OpenAPI spec version: 0.1.0
  */
+import type { SoloRevealInputLocale } from './soloRevealInputLocale';
 
 export interface SoloRevealInput {
   /** @minLength 1 */
   token: string;
+  locale?: SoloRevealInputLocale;
 }

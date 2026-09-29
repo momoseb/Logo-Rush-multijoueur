@@ -35,6 +35,13 @@ async function postJson(url: string, token: string, body: unknown) {
   return response.json();
 }
 
+// The bulk endpoint's own zod schema caps at 2000 items per call, but
+// Express's JSON body parser (default ~100kb limit) rejects a single
+// request well before that for a large theme (video-games' ~400 items hit
+// HTTP 413 in one shot) — chunk well under that instead of raising the
+// server's body limit for what's an infrequent, ops-only script.
+const BULK_CHUNK_SIZE = 80;
+
 async function pushTheme(apiBase: string, token: string, job: ThemeJob) {
   console.log(`[push-remote] ${job.id}: fetching + transforming...`);
   const { theme, rows } = await job.build();
@@ -42,10 +49,13 @@ async function pushTheme(apiBase: string, token: string, job: ThemeJob) {
 
   await postJson(`${apiBase}/admin/themes`, token, theme);
 
-  // Bulk endpoint caps at 2000 items per call — every theme here is well
-  // under that, so a single call is enough.
-  const result = (await postJson(`${apiBase}/admin/catalog/bulk`, token, rows)) as { count: number };
-  console.log(`[push-remote] ${job.id}: done, ${result.count} items upserted via admin API.`);
+  let upserted = 0;
+  for (let i = 0; i < rows.length; i += BULK_CHUNK_SIZE) {
+    const chunk = rows.slice(i, i + BULK_CHUNK_SIZE);
+    const result = (await postJson(`${apiBase}/admin/catalog/bulk`, token, chunk)) as { count: number };
+    upserted += result.count;
+  }
+  console.log(`[push-remote] ${job.id}: done, ${upserted} items upserted via admin API.`);
 }
 
 async function main() {

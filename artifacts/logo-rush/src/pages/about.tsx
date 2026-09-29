@@ -1,6 +1,5 @@
 import { useLocation } from 'wouter';
 import { useTranslation } from 'react-i18next';
-import { useListThemes } from '@workspace/api-client-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowLeft, ExternalLink, Info } from 'lucide-react';
@@ -11,14 +10,11 @@ export default function About() {
   const { t, i18n } = useTranslation();
   const locale = (i18n.language?.slice(0, 2) as Locale) || 'fr';
   const [, setLocation] = useLocation();
-  const { data: themes } = useListThemes();
 
-  // Driven by the live, enabled theme list (not hardcoded) so a newly
-  // enabled theme's attribution appears here automatically — see the
-  // multi-theme plan, section "Page À propos".
-  const providers = [...new Set((themes ?? []).map((theme) => theme.imageProvider))]
-    .map((provider) => THEME_ATTRIBUTIONS[provider])
-    .filter((attribution): attribution is NonNullable<typeof attribution> => Boolean(attribution));
+  // Every provider is always listed — not only those of currently-enabled
+  // themes: this page used to be driven by the live /game/themes response,
+  // and rendered nothing but its intro whenever that list was unavailable.
+  const providers = Object.values(THEME_ATTRIBUTIONS);
 
   return (
     <div className="flex-1 w-full max-w-2xl mx-auto py-8 space-y-8">
@@ -32,25 +28,34 @@ export default function About() {
         </div>
       </div>
 
-      <p className="text-muted-foreground">{t('about.intro')}</p>
+      <p className="text-muted-foreground">{t('about.description')}</p>
 
-      <div className="space-y-4">
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold">{t('about.apisTitle')}</h2>
+        <p className="text-sm text-muted-foreground">{t('about.intro')}</p>
         {providers.map((attribution) => (
           <Card key={attribution.url} className="bg-card/40 backdrop-blur-md">
             <CardContent className="p-5 space-y-1">
-              <a
-                href={attribution.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 font-semibold text-primary hover:underline"
-              >
-                {attribution.name} <ExternalLink className="h-3.5 w-3.5" />
-              </a>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <a
+                  href={attribution.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 font-semibold text-primary hover:underline"
+                >
+                  {attribution.name} <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {locale === 'en' ? attribution.themesEn : attribution.themesFr}
+                </span>
+              </div>
               <p className="text-sm text-muted-foreground">{locale === 'en' ? attribution.noteEn : attribution.note}</p>
             </CardContent>
           </Card>
         ))}
-      </div>
+      </section>
+
+      <p className="text-xs text-muted-foreground">{t('about.trademarks')}</p>
     </div>
   );
 }

@@ -36,7 +36,7 @@ export default {
     start: 'Start',
     round: 'Round',
     score: 'Score',
-    guessPlaceholder: 'Type the brand here...',
+    guessPlaceholder: 'Your answer...',
     submit: 'Submit',
     nextRound: 'Next round',
     enterKey: 'Enter',
@@ -117,7 +117,10 @@ export default {
   },
   about: {
     title: 'About',
-    intro: "Logo Rush relies on third-party APIs for each theme's images. Here are their sources, as required by their terms of use.",
+    description: 'Logo Rush is a speed game: an image slowly de-pixelates — find what it shows before everyone else, solo or multiplayer.',
+    apisTitle: 'APIs used',
+    intro: "Each theme's images and names come from the following services, credited as their terms of use require.",
+    trademarks: 'Logos, crests, posters and covers remain the property of their respective owners and are only used for identification within the game.',
   },
   notFound: {
     title: 'Page not found',

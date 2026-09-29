@@ -76,12 +76,14 @@ async function main() {
   // this script keeps working in an environment that only has HTTPS egress.
   process.env.DATABASE_URL ??= "postgresql://unused:unused@localhost:5432/unused";
 
-  const [{ buildBrandsCatalog }, { buildFootballClubsCatalog }, { buildMoviesCatalog }, { buildVideoGamesCatalog }] = await Promise.all([
-    import("./seed-brands"),
-    import("./seed-football-clubs"),
-    import("./seed-movies"),
-    import("./seed-video-games"),
-  ]);
+  const [{ buildBrandsCatalog }, { buildFootballClubsCatalog }, { buildMoviesCatalog }, { buildVideoGamesCatalog }, { buildSeriesCatalog }] =
+    await Promise.all([
+      import("./seed-brands"),
+      import("./seed-football-clubs"),
+      import("./seed-movies"),
+      import("./seed-video-games"),
+      import("./seed-series"),
+    ]);
 
   const jobs: ThemeJob[] = [
     { id: "brands", build: async () => buildBrandsCatalog() },
@@ -96,6 +98,7 @@ async function main() {
       requiredEnvVar: "RAWG_API_KEY",
       build: async () => buildVideoGamesCatalog(process.env.RAWG_API_KEY!),
     },
+    { id: "series", requiredEnvVar: "TMDB_API_KEY", build: async () => buildSeriesCatalog(process.env.TMDB_API_KEY!) },
   ];
 
   const themeArgIndex = process.argv.indexOf("--theme");

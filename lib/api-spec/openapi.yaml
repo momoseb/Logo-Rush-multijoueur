@@ -61,6 +61,37 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Theme"
+  /game/theme-answers:
+    get:
+      operationId: listThemeAnswers
+      tags: [game]
+      summary: Guess autocomplete list (every answer of a theme, in one locale)
+      description: >
+        Only served for themes whose `autocomplete` flag is true (movies,
+        TV series, video games — long, hard-to-spell titles); 404 otherwise.
+        It lists every candidate answer of the theme, never which one is the
+        current round's, so it doesn't leak anything a round token hides.
+      parameters:
+        - name: themeId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: locale
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [fr, en]
+      responses:
+        "200":
+          description: Sorted, de-duplicated answer names
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
   /game/logos:
     get:
       operationId: listSoloLogos
@@ -250,7 +281,7 @@ components:
           enum: [waiting, playing]
     Theme:
       type: object
-      required: [id, nameFr, nameEn, imageProvider, aspectW, aspectH]
+      required: [id, nameFr, nameEn, imageProvider, aspectW, aspectH, autocomplete]
       properties:
         id:
           type: string
@@ -264,6 +295,9 @@ components:
           type: integer
         aspectH:
           type: integer
+        autocomplete:
+          type: boolean
+          description: Whether guesses get autocompletion (see /game/theme-answers)
     Logo:
       type: object
       required: [id, themeId, answerFr, answerEn, aliasesFr, aliasesEn, difficulty, imageUrl]

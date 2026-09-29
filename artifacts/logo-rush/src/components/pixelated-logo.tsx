@@ -25,67 +25,120 @@ export function getBrandfetchUrl(src: string, fallback = true) {
   const fallbackPath = fallback ? '/fallback/lettermark' : '';
   return `https://cdn.brandfetch.io/domain/${encodeURIComponent(src.slice('brandfetch://'.length))}/w/512/h/512/type/icon${fallbackPath}?c=${encodeURIComponent(clientId || '')}`;
 }
+// Reveal curve: resolution (on the image's long edge, 8 → 512 px) as a
+// function of round progress. Interpolated on a log scale, since what the
+// eye perceives is the *ratio* between successive block sizes, not their
+// difference: the old `8 + n^2.2 * 504` curve barely moved for the first
+// ~30% of a round (unreadable mosaic) then cleared the image almost
+// entirely between 30% and 60%. `n^0.75` in log space starts a bit faster
+// and spreads the last, most revealing steps over the rest of the round:
+//   progress     0.1  0.2  0.3  0.4  0.5  0.6  0.7  0.8  0.9
+//   old (px)      11   22   43   75  118  172  238  316  408
+//   new (px)      17   28   43   65   95  136  193  270  373
+const MIN_RESOLUTION = 8;
+const REVEAL_EXPONENT = 0.75;
+const LONG_EDGE = 512;
+
+export function pixelResolution(progress: number) {
+  const normalized = Math.min(1, Math.max(0, progress));
+  return Math.round(MIN_RESOLUTION * Math.pow(LONG_EDGE / MIN_RESOLUTION, Math.pow(normalized, REVEAL_EXPONENT)));
+}
+
+type LoadedImage = { image: HTMLImageElement; kind: 'loaded' | 'lettermark' };
+
 export function PixelatedLogo({ src, progress, reveal = false, alt, aspectRatio = { w: 1, h: 1 }, onStatusChange }: PixelatedLogoProps) {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState<'loading' | 'loaded' | 'missing' | 'lettermark'>('loading');
+  const [loaded, setLoaded] = useState<LoadedImage | null>(null);
+  const onStatusChangeRef = useRef(onStatusChange);
+  onStatusChangeRef.current = onStatusChange;
 
-  const longEdge = 512;
-  const width = aspectRatio.w >= aspectRatio.h ? longEdge : Math.round((longEdge * aspectRatio.w) / aspectRatio.h);
-  const height = aspectRatio.h >= aspectRatio.w ? longEdge : Math.round((longEdge * aspectRatio.h) / aspectRatio.w);
-
+  // Load each image once per `src` — progress ticks (~10/s) only redraw
+  // from the already-decoded image below, they never hit the network again.
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const context = canvas.getContext('2d');
-    if (!context) return;
+    let cancelled = false;
+    const report = (next: 'loaded' | 'missing' | 'lettermark') => {
+      if (cancelled) return;
+      setStatus(next);
+      onStatusChangeRef.current?.(next);
+    };
+    setStatus('loading');
+    setLoaded(null);
     const image = new Image();
     image.onload = () => {
-      setStatus('loaded');
-      onStatusChange?.('loaded');
-      canvas.width = width;
-      canvas.height = height;
-      const normalized = Math.min(1, Math.max(0, progress));
-      const longEdgeResolution = reveal ? longEdge : Math.round(8 + Math.pow(normalized, 2.2) * (longEdge - 8));
-      const bufferWidth = Math.max(1, Math.round((longEdgeResolution * width) / longEdge));
-      const bufferHeight = Math.max(1, Math.round((longEdgeResolution * height) / longEdge));
-      const buffer = document.createElement('canvas');
-      buffer.width = bufferWidth;
-      buffer.height = bufferHeight;
-      const bufferContext = buffer.getContext('2d');
-      if (!bufferContext) return;
-      bufferContext.drawImage(image, 0, 0, bufferWidth, bufferHeight);
-      context.clearRect(0, 0, width, height);
-      context.imageSmoothingEnabled = false;
-      context.drawImage(buffer, 0, 0, bufferWidth, bufferHeight, 0, 0, width, height);
+      if (cancelled) return;
+      setLoaded({ image, kind: 'loaded' });
+      report('loaded');
     };
     image.onerror = () => {
       if (!src.startsWith('brandfetch://')) {
-        setStatus('missing');
-        onStatusChange?.('missing');
+        report('missing');
         return;
       }
-      image.onerror = () => {
-        setStatus('missing');
-        onStatusChange?.('missing');
-      };
+      image.onerror = () => report('missing');
       image.onload = () => {
-        setStatus('lettermark');
-        onStatusChange?.('lettermark');
-        canvas.width = width;
-        canvas.height = height;
-        context.clearRect(0, 0, width, height);
-        context.drawImage(image, 0, 0, width, height);
+        if (cancelled) return;
+        setLoaded({ image, kind: 'lettermark' });
+        report('lettermark');
       };
       image.src = getBrandfetchUrl(src, true);
     };
-    setStatus('loading');
     image.src = getBrandfetchUrl(src, false);
-  }, [src, progress, reveal, width, height, onStatusChange]);
+    return () => {
+      cancelled = true;
+      image.onload = null;
+      image.onerror = null;
+    };
+  }, [src]);
+
+  // The canvas takes the image's own proportions (not the theme's nominal
+  // aspect ratio, which is only a placeholder until it loads): e.g. RAWG
+  // "covers" are really landscape key art, and forcing them into the
+  // theme's frame used to squash them.
+  const naturalW = loaded?.image.naturalWidth || aspectRatio.w;
+  const naturalH = loaded?.image.naturalHeight || aspectRatio.h;
+  const width = naturalW >= naturalH ? LONG_EDGE : Math.round((LONG_EDGE * naturalW) / naturalH);
+  const height = naturalH >= naturalW ? LONG_EDGE : Math.round((LONG_EDGE * naturalH) / naturalW);
+  const resolution = reveal || loaded?.kind === 'lettermark' ? LONG_EDGE : pixelResolution(progress);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext('2d');
+    if (!canvas || !context || !loaded) return;
+    canvas.width = width;
+    canvas.height = height;
+    context.clearRect(0, 0, width, height);
+    if (resolution >= LONG_EDGE) {
+      context.imageSmoothingEnabled = true;
+      context.drawImage(loaded.image, 0, 0, width, height);
+      return;
+    }
+    const bufferWidth = Math.max(1, Math.round((resolution * width) / LONG_EDGE));
+    const bufferHeight = Math.max(1, Math.round((resolution * height) / LONG_EDGE));
+    const buffer = document.createElement('canvas');
+    buffer.width = bufferWidth;
+    buffer.height = bufferHeight;
+    const bufferContext = buffer.getContext('2d');
+    if (!bufferContext) return;
+    bufferContext.drawImage(loaded.image, 0, 0, bufferWidth, bufferHeight);
+    context.imageSmoothingEnabled = false;
+    context.drawImage(buffer, 0, 0, bufferWidth, bufferHeight, 0, 0, width, height);
+  }, [loaded, resolution, width, height]);
 
   return (
-    <div className="relative h-full w-full" style={{ maxHeight: '32rem', maxWidth: `${32 * (width / longEdge)}rem`, aspectRatio: `${aspectRatio.w} / ${aspectRatio.h}` }}>
-      <canvas ref={canvasRef} role="img" aria-label={alt ?? t('common.imageToGuess')} className="h-full w-full object-contain" />
+    // Fills whatever box the caller gives it; the canvas keeps the image's
+    // proportions inside it (object-contain), never stretched or cropped.
+    <div className="relative flex h-full w-full items-center justify-center">
+      <canvas
+        ref={canvasRef}
+        width={width}
+        height={height}
+        role="img"
+        aria-label={alt ?? t('common.imageToGuess')}
+        className="max-h-full max-w-full rounded-lg object-contain"
+        style={{ aspectRatio: `${width} / ${height}` }}
+      />
       {status === 'missing' && (
         <div className="absolute inset-0 flex items-center justify-center rounded-xl border border-destructive/40 bg-destructive/10 text-sm font-semibold text-destructive">
           {t('common.imageUnavailable')}

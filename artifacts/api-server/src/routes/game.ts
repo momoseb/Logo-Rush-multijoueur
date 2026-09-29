@@ -7,6 +7,8 @@ import {
   ListSoloLogosResponse,
   ListSoloRoundsQueryParams,
   ListSoloRoundsResponse,
+  ListThemeAnswersQueryParams,
+  ListThemeAnswersResponse,
   ListThemesResponse,
   ReportLogoBody,
   ReportLogoResponse,
@@ -17,7 +19,7 @@ import {
   SubmitSoloScoreBody,
   SubmitSoloScoreResponse,
 } from "@workspace/api-zod";
-import { findCatalogItem, getCatalogItems, getPublicRooms, getStats, getThemeById, getThemes, matchesGuess, pickAnswer } from "../game";
+import { findCatalogItem, getCatalogItems, getPublicRooms, getStats, getThemeAnswers, getThemeById, getThemes, matchesGuess, pickAnswer, themeHasAutocomplete } from "../game";
 import { toClientImageUrl } from "../image-providers";
 import { signLogoToken, verifyLogoToken } from "../logo-token";
 
@@ -34,7 +36,22 @@ const asLocale = (value: unknown): "fr" | "en" => (value === "en" ? "en" : "fr")
 
 gameRouter.get("/game/stats", (_req, res) => res.json(getStats()));
 gameRouter.get("/game/rooms", (_req, res) => res.json(getPublicRooms()));
-gameRouter.get("/game/themes", (_req, res) => res.json(ListThemesResponse.parse(getThemes())));
+gameRouter.get("/game/themes", (_req, res) =>
+  res.json(ListThemesResponse.parse(getThemes().map((theme) => ({ ...theme, autocomplete: themeHasAutocomplete(theme) })))),
+);
+
+// Autocomplete source for long, hard-to-spell titles (movies, series, video
+// games). Lists every candidate answer of the theme — never which one is the
+// current round's — so it doesn't undo what the round tokens hide.
+gameRouter.get("/game/theme-answers", (req, res): void => {
+  const params = ListThemeAnswersQueryParams.safeParse({ themeId: req.query.themeId, locale: req.query.locale });
+  const theme = params.success ? getThemeById(params.data.themeId) : undefined;
+  if (!params.success || !theme || !theme.enabled || !themeHasAutocomplete(theme)) {
+    res.status(404).json({ error: "Thème invalide." });
+    return;
+  }
+  res.json(ListThemeAnswersResponse.parse(getThemeAnswers(theme.id, asLocale(params.data.locale))));
+});
 
 // Full catalog dump across every theme: only the internal, unauthenticated
 // /logo-audit QA tool reads this — a different, deliberately-unauthenticated

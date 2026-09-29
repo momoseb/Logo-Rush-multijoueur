@@ -1,0 +1,115 @@
+// TMDB "series" (TV show posters) catalog source — same API, same key and
+// same attribution as the movies theme, just the /discover/tv endpoint
+// (whose results use `name`/`original_name` instead of
+// `title`/`original_title`, and `first_air_date` instead of
+// `primary_release_date`).
+//
+// Lives in @workspace/db (not scripts/) so the api-server can import it
+// too. Imports ../schema only, never ../index: the latter throws at import
+// time without DATABASE_URL and opens a pool.
+import { makeCatalogItemId, type NewCatalogItem, type NewTheme } from "../schema";
+
+export const SERIES_THEME_ID = "series";
+const THEME_ID = SERIES_THEME_ID;
+export const seriesTheme: NewTheme = { id: THEME_ID, nameFr: "Séries", nameEn: "TV series", imageProvider: "tmdb", aspectW: 2, aspectH: 3, enabled: true, sortOrder: 4 };
+const API_BASE = "https://api.themoviedb.org/3";
+const POSTER_SIZE = "w500";
+// 20 results/page, so 15 pages ~= 300 shows. The vote-count floor does most
+// of the "recognizable" filtering (see seed-movies.ts); it's lower than for
+// movies because TV shows accumulate far fewer TMDB votes than films of
+// comparable fame.
+const PAGES = 15;
+const MAX_AGE_YEARS = 40;
+const minFirstAirDate = `${new Date().getFullYear() - MAX_AGE_YEARS}-01-01`;
+const MIN_VOTE_COUNT = 500;
+// TMDB's /discover/tv popularity ranking is dominated by daily soaps, talk
+// shows, news and reality TV, whose posters are mostly a logo or a host's
+// face — not guessable. Scripted genres only.
+const EXCLUDED_GENRE_IDS = [
+  10763, // News
+  10764, // Reality
+  10766, // Soap
+  10767, // Talk
+];
+
+type TmdbShow = {
+  id: number;
+  name: string;
+  original_name?: string;
+  poster_path?: string | null;
+};
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function fetchDiscoverPage(apiKey: string, language: string, page: number): Promise<TmdbShow[]> {
+  const params = new URLSearchParams({
+    language,
+    sort_by: "popularity.desc",
+    page: String(page),
+    include_adult: "false",
+    "first_air_date.gte": minFirstAirDate,
+    "vote_count.gte": String(MIN_VOTE_COUNT),
+    without_genres: EXCLUDED_GENRE_IDS.join(","),
+  });
+  // TMDB hands out two credentials on the same settings page: the long
+  // "API Read Access Token" (a JWT, sent as a Bearer header) and the short
+  // v3 "API Key" (sent as ?api_key=). Accept either, whichever got pasted.
+  const isBearerToken = apiKey.startsWith("eyJ");
+  if (!isBearerToken) params.set("api_key", apiKey);
+  const response = await fetch(`${API_BASE}/discover/tv?${params}`, {
+    headers: { accept: "application/json", ...(isBearerToken ? { Authorization: `Bearer ${apiKey}` } : {}) },
+  });
+  // A bad key fails every page the same way — surface it instead of
+  // silently producing an empty catalog.
+  if (response.status === 401) throw new Error("[seed-series] TMDB rejected the API key (HTTP 401).");
+  if (!response.ok) {
+    console.warn(`[seed-series] ${language} page ${page}: HTTP ${response.status}, skipping.`);
+    return [];
+  }
+  const data = (await response.json()) as { results?: TmdbShow[] };
+  return data.results ?? [];
+}
+
+// Pure fetch/transform, no DB access. Reused by scripts/seed-series.ts
+// (writes straight to the DB), push-remote.ts (writes via the admin HTTP
+// API) and the api-server's startup auto-seed (auto-seed.ts), which fills
+// the theme by itself once TMDB_API_KEY is set on the server.
+export async function buildSeriesCatalog(apiKey: string): Promise<{ theme: NewTheme; rows: NewCatalogItem[] }> {
+  const rows: NewCatalogItem[] = [];
+  // Popularity can shift between two page requests, so the same show can
+  // occasionally appear on two pages — dedupe by TMDB id.
+  const seen = new Set<number>();
+  for (let page = 1; page <= PAGES; page += 1) {
+    const [frResults, enResults] = await Promise.all([
+      fetchDiscoverPage(apiKey, "fr-FR", page),
+      fetchDiscoverPage(apiKey, "en-US", page),
+    ]);
+    const enById = new Map(enResults.map((show) => [show.id, show]));
+
+    for (const frShow of frResults) {
+      if (!frShow.poster_path || seen.has(frShow.id)) continue;
+      seen.add(frShow.id);
+      const enShow = enById.get(frShow.id);
+      const answerFr = frShow.name;
+      const answerEn = enShow?.name || frShow.name;
+      const aliasesFr = frShow.original_name && frShow.original_name !== answerFr ? [frShow.original_name] : [];
+      const aliasesEn = enShow?.original_name && enShow.original_name !== answerEn ? [enShow.original_name] : [];
+      rows.push({
+        id: makeCatalogItemId(THEME_ID, String(frShow.id)),
+        themeId: THEME_ID,
+        answerFr,
+        answerEn,
+        aliasesFr,
+        aliasesEn,
+        difficulty: "medium",
+        category: null,
+        imageRef: `https://image.tmdb.org/t/p/${POSTER_SIZE}${frShow.poster_path}`,
+        active: true,
+      });
+    }
+    console.log(`[seed-series] page ${page}: ${frResults.length} shows (running total ${rows.length})`);
+    await sleep(250);
+  }
+
+  return { theme: seriesTheme, rows };
+}

@@ -37,6 +37,11 @@ ou manuellement :
     (édition du catalogue). Sans cette variable, tout `/api/admin/*`
     répond 503 : l'interface d'admin est désactivée par défaut, pas
     ouverte sans authentification.
+  - `TMDB_API_KEY` (optionnelle) — si elle est définie sur le service,
+    l'API remplit elle-même le thème « Séries » au démarrage quand il est
+    vide (`artifacts/api-server/src/auto-seed.ts`), sans script ni
+    `ADMIN_TOKEN`. Accepte le « Jeton d'accès en lecture à l'API » comme
+    la « Clé d'API » v3 de TMDB. Ne réécrit jamais un thème déjà rempli.
   - `FOOTBALL_DATA_API_KEY` / `TMDB_API_KEY` / `RAWG_API_KEY` — uniquement
     nécessaires pour lancer les scripts de seed ponctuels des thèmes
     clubs de foot / films / jeux vidéo (`pnpm --filter @workspace/scripts

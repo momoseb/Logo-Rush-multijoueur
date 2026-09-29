@@ -52,6 +52,8 @@ export interface Theme {
   imageProvider: string;
   aspectW: number;
   aspectH: number;
+  /** Whether guesses get autocompletion (see /game/theme-answers) */
+  autocomplete: boolean;
 }
 
 export type LogoDifficulty = typeof LogoDifficulty[keyof typeof LogoDifficulty];
@@ -200,6 +202,19 @@ export interface LogoReportInput {
 export interface LogoReportResult {
   ok: boolean;
 }
+
+export type ListThemeAnswersParams = {
+themeId: string;
+locale?: ListThemeAnswersLocale;
+};
+
+export type ListThemeAnswersLocale = typeof ListThemeAnswersLocale[keyof typeof ListThemeAnswersLocale];
+
+
+export const ListThemeAnswersLocale = {
+  fr: 'fr',
+  en: 'en',
+} as const;
 
 export type GetSoloLeaderboardParams = {
 themeId: string;

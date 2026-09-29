@@ -12,6 +12,8 @@ export * from './getSoloLeaderboardRoundCount';
 export * from './getSoloLeaderboardRoundDuration';
 export * from './healthStatus';
 export * from './listSoloRoundsParams';
+export * from './listThemeAnswersLocale';
+export * from './listThemeAnswersParams';
 export * from './logo';
 export * from './logoDifficulty';
 export * from './logoReportInput';

@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { createServer } from "node:http";
 import { Server } from "socket.io";
 import { attachGameServer } from "./game";
+import { autoSeedCatalog } from "./auto-seed";
 
 const rawPort = process.env["PORT"];
 
@@ -28,6 +29,9 @@ attachGameServer(io)
   .then(() => {
     server.listen(port, () => {
       logger.info({ port }, "Server listening");
+    });
+    autoSeedCatalog().catch((error) => {
+      logger.error({ err: error }, "Catalog auto-seed failed (existing themes unaffected)");
     });
   })
   .catch((error) => {

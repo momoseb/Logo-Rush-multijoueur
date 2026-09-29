@@ -150,6 +150,14 @@ gotcha).
   directly — those endpoints run inside Render's network, where DB access
   works fine. Don't re-attempt a direct `DATABASE_URL` connection or the
   Render Shell from a sandboxed session; use `push-remote.ts` instead.
+  The "series" theme has an even simpler path: its pure builder lives in
+  `@workspace/db/catalog-sources` (shared, imports `../schema` only) and
+  the api-server seeds it by itself at startup
+  (`artifacts/api-server/src/auto-seed.ts`) when `TMDB_API_KEY` is set on
+  the service and the theme is empty — adding that env var on Render
+  (which redeploys) is all it takes. The Render MCP tools can *set* env
+  vars but can't read them, so `ADMIN_TOKEN` is never available to an
+  agent that way.
 - **Testing multiplayer with Playwright**: two `browser.newContext()`
   calls give each "player" fully isolated storage, like two different
   devices/browsers — use that to simulate two real, independent players.

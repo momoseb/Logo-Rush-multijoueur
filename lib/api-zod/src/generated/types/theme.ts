@@ -13,4 +13,6 @@ export interface Theme {
   imageProvider: string;
   aspectW: number;
   aspectH: number;
+  /** Whether guesses get autocompletion (see /game/theme-answers) */
+  autocomplete: boolean;
 }

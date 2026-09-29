@@ -15,7 +15,6 @@ import type { SoloRound } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useGameStore } from '@/store/useGameStore';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { PixelatedLogo } from '@/components/pixelated-logo';
 import { SoloLeaderboard } from '@/components/solo-leaderboard';
 import { ReportLogoButton } from '@/components/report-logo-button';
+import { GuessInput, useGuessSuggestions } from '@/components/guess-input';
 
 type GameState = 'setup' | 'playing' | 'round_recap' | 'results';
 type RoundCount = 5 | 10 | 15 | 20;
@@ -42,6 +42,7 @@ export default function Solo() {
   }, [themes, themeId]);
   const currentTheme = themes?.find((t) => t.id === themeId);
   const { data: rounds, isLoading } = useListSoloRounds({ themeId });
+  const suggestions = useGuessSuggestions(themeId, locale, Boolean(currentTheme?.autocomplete));
 
   const [gameState, setGameState] = useState<GameState>('setup');
   const [currentRound, setCurrentRound] = useState(0);
@@ -145,9 +146,17 @@ export default function Solo() {
     }
   };
 
-  const handleGuessSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const guessValue = guess.trim();
+  // After a wrong guess the field must be ready for the next attempt
+  // without clicking back into it — it's never `disabled` while a guess is
+  // in flight (a disabled input drops focus), only read-only, and focus is
+  // re-asserted in case the submit button stole it.
+  const resetGuessField = () => {
+    setGuess('');
+    requestAnimationFrame(() => guessInputRef.current?.focus());
+  };
+
+  const submitGuess = async (rawGuess: string) => {
+    const guessValue = rawGuess.trim();
     if (gameState !== 'playing' || !currentLogo || !guessValue || guessMutation.isPending) return;
 
     try {
@@ -155,11 +164,16 @@ export default function Solo() {
       if (result.correct) {
         endRound('won', result.answer || '');
       } else {
-        setGuess('');
+        resetGuessField();
       }
     } catch {
-      setGuess('');
+      resetGuessField();
     }
+  };
+
+  const handleGuessSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void submitGuess(guess);
   };
 
   useEffect(() => {
@@ -304,7 +318,7 @@ export default function Solo() {
         {gameState === 'playing' && <ReportLogoButton logoId={currentLogo?.token} />}
       </div>
 
-      <Card className="w-full aspect-square md:aspect-video flex items-center justify-center overflow-hidden bg-card/30 backdrop-blur-md border-primary/10 relative">
+      <Card className="w-full h-[min(60vh,32rem)] min-h-64 p-4 flex items-center justify-center overflow-hidden bg-card/30 backdrop-blur-md border-primary/10 relative">
         <AnimatePresence mode="wait">
           {currentLogo && (
             <motion.div
@@ -350,14 +364,20 @@ export default function Solo() {
       </Card>
 
       <form onSubmit={handleGuessSubmit} className="w-full flex gap-4 relative z-0">
-        <Input
+        <GuessInput
           ref={guessInputRef}
           autoFocus
           value={guess}
-          onChange={(e) => setGuess(e.target.value)}
+          onValueChange={setGuess}
+          onPick={(value) => {
+            setGuess(value);
+            void submitGuess(value);
+          }}
+          suggestions={suggestions}
           placeholder={t('solo.guessPlaceholder')}
           className="h-14 text-xl text-center bg-card/50 backdrop-blur-md"
-          disabled={gameState !== 'playing' || guessMutation.isPending}
+          disabled={gameState !== 'playing'}
+          readOnly={guessMutation.isPending}
           data-testid="input-solo-guess"
         />
         <Button

@@ -7,6 +7,7 @@ import { useGameStore } from '@/store/useGameStore';
 import { getSocket } from '@/lib/socket';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { GuessInput, useGuessSuggestions } from '@/components/guess-input';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -52,6 +53,8 @@ export default function Room() {
   
   const timerRef = useRef<number | null>(null);
   const guessInputRef = useRef<HTMLInputElement>(null);
+  const currentTheme = themes?.find((theme) => theme.id === themeId);
+  const suggestions = useGuessSuggestions(themeId, locale, Boolean(currentTheme?.autocomplete));
 
   useEffect(() => {
     ensureSessionId();
@@ -193,11 +196,11 @@ export default function Room() {
     );
   };
 
-  const handleGuessSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!guess.trim() || guessState === 'correct') return;
-    
-    getSocket().emit('guess:submit', { code, guess: guess.trim() }, (result: { correct: boolean }) => {
+  const submitGuess = (rawGuess: string) => {
+    const guessValue = rawGuess.trim();
+    if (!guessValue || guessState === 'correct') return;
+
+    getSocket().emit('guess:submit', { code, guess: guessValue }, (result: { correct: boolean }) => {
       if (result.correct) setGuessState('correct');
       else {
         setGuessState('wrong');
@@ -205,6 +208,14 @@ export default function Room() {
       }
     });
     setGuess('');
+    // Keep typing after a wrong guess without clicking back into the field
+    // (the "Go" button steals focus when clicked).
+    requestAnimationFrame(() => guessInputRef.current?.focus());
+  };
+
+  const handleGuessSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitGuess(guess);
   };
 
   const copyCode = () => {
@@ -434,7 +445,7 @@ export default function Room() {
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-[500px]">
         {/* Main Game Area */}
         <div className="lg:col-span-3 flex flex-col gap-4">
-          <Card className="flex-1 flex items-center justify-center bg-card/30 backdrop-blur-md border-primary/20 overflow-hidden relative">
+          <Card className="h-[min(60vh,34rem)] min-h-72 flex items-center justify-center bg-card/30 backdrop-blur-md border-primary/20 overflow-hidden relative">
             <AnimatePresence mode="wait">
               {(gameState === 'playing' || gameState === 'round_recap') && currentLogo && (
                 <motion.div
@@ -442,16 +453,13 @@ export default function Room() {
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 1.1, opacity: 0 }}
-                  className="w-full h-full flex items-center justify-center relative p-8"
+                  className="w-full h-full flex items-center justify-center relative p-4 sm:p-6"
                 >
                   <PixelatedLogo
                     src={currentLogo.imageUrl}
                     progress={revealProgress}
                     reveal={gameState !== 'playing'}
-                    aspectRatio={(() => {
-                      const theme = themes?.find((t) => t.id === themeId);
-                      return theme ? { w: theme.aspectW, h: theme.aspectH } : undefined;
-                    })()}
+                    aspectRatio={currentTheme ? { w: currentTheme.aspectW, h: currentTheme.aspectH } : undefined}
                   />
                 </motion.div>
               )}
@@ -527,11 +535,13 @@ export default function Room() {
 
           {/* Input Area */}
           <form onSubmit={handleGuessSubmit} className="relative">
-            <Input
+            <GuessInput
               ref={guessInputRef}
               autoFocus
               value={guess}
-              onChange={(e) => setGuess(e.target.value)}
+              onValueChange={setGuess}
+              onPick={submitGuess}
+              suggestions={suggestions}
               disabled={gameState !== 'playing' || guessState === 'correct'}
               placeholder={
                 gameState !== 'playing' ? t('room.waitingPlaceholder') :

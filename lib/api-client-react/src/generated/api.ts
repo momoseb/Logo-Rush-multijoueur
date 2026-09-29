@@ -24,6 +24,7 @@ import type {
   GetSoloLeaderboardParams,
   HealthStatus,
   ListSoloRoundsParams,
+  ListThemeAnswersParams,
   Logo,
   LogoReportInput,
   LogoReportResult,
@@ -355,6 +356,91 @@ export function useListThemes<TData = Awaited<ReturnType<typeof listThemes>>, TE
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListThemesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListThemeAnswersUrl = (params: ListThemeAnswersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/game/theme-answers?${stringifiedParams}` : `/api/game/theme-answers`
+}
+
+/**
+ * Only served for themes whose `autocomplete` flag is true (movies, TV series, video games — long, hard-to-spell titles); 404 otherwise. It lists every candidate answer of the theme, never which one is the current round's, so it doesn't leak anything a round token hides.
+ * @summary Guess autocomplete list (every answer of a theme, in one locale)
+ */
+export const listThemeAnswers = async (params: ListThemeAnswersParams, options?: Parameters<typeof customFetch>[1]): Promise<string[]> => {
+
+  return customFetch<string[]>(getListThemeAnswersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListThemeAnswersQueryKey = (params?: ListThemeAnswersParams,) => {
+    return [
+    `/api/game/theme-answers`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListThemeAnswersQueryOptions = <TData = Awaited<ReturnType<typeof listThemeAnswers>>, TError = ErrorType<unknown>>(params: ListThemeAnswersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listThemeAnswers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListThemeAnswersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listThemeAnswers>>> = ({ signal }) => listThemeAnswers(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listThemeAnswers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListThemeAnswersQueryResult = NonNullable<Awaited<ReturnType<typeof listThemeAnswers>>>
+export type ListThemeAnswersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Guess autocomplete list (every answer of a theme, in one locale)
+ */
+
+export function useListThemeAnswers<TData = Awaited<ReturnType<typeof listThemeAnswers>>, TError = ErrorType<unknown>>(
+ params: ListThemeAnswersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listThemeAnswers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListThemeAnswersQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

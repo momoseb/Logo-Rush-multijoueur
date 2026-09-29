@@ -36,7 +36,7 @@ export default {
     start: 'Démarrer',
     round: 'Manche',
     score: 'Score',
-    guessPlaceholder: 'Taper la marque ici...',
+    guessPlaceholder: 'Votre réponse...',
     submit: 'Valider',
     nextRound: 'Manche suivante',
     enterKey: 'Entrée',
@@ -117,7 +117,10 @@ export default {
   },
   about: {
     title: 'À propos',
-    intro: "Logo Rush s'appuie sur des APIs tierces pour les images de chaque thème. Voici leurs sources, comme leurs conditions d'utilisation l'exigent.",
+    description: "Logo Rush est un jeu de rapidité : une image se dépixelise peu à peu, trouvez ce qu'elle représente avant les autres — en solo ou en multijoueur.",
+    apisTitle: 'APIs utilisées',
+    intro: "Les images et noms de chaque thème proviennent des services suivants, crédités comme leurs conditions d'utilisation l'exigent.",
+    trademarks: "Les logos, écussons, affiches et jaquettes restent la propriété de leurs détenteurs respectifs et ne sont utilisés qu'à des fins d'identification dans le jeu.",
   },
   notFound: {
     title: 'Page introuvable',

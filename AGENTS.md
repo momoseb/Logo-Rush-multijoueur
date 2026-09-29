@@ -30,7 +30,7 @@ catalog item's `imageRef` into a real image URL, dispatching on
 CDN), the others (`football-data`, `tmdb`, `rawg`) already store a
 direct, pre-resolved CDN URL set once by that theme's seed script (see
 `scripts/src/seed-catalog/seed-{brands,football-clubs,movies,
-video-games}.ts`) — no third-party API key is ever needed at play time,
+video-games,series}.ts`) — no third-party API key is ever needed at play time,
 only when re-running a seed script. Each seed script does a full
 delete-then-reinsert of its theme's `catalog_items` (not a plain upsert)
 so a tightened filter or a club's relegation doesn't leave stale entries
@@ -237,6 +237,22 @@ gotcha).
   reconnect *as* another player (steal host status, submit guesses in
   their name) — the frontend never reads another player's `sessionId`,
   only its own from the store, so stripping it has no functional cost.
+- **Guess autocompletion** (`components/guess-input.tsx`, solo + room)
+  is only offered for themes whose `imageProvider` is `tmdb` or `rawg`
+  (movies, series, video games — long, hard-to-spell titles), decided
+  server-side by `themeHasAutocomplete()` in `game.ts` and exposed as the
+  theme's `autocomplete` flag. Its source, `GET /game/theme-answers`,
+  lists every answer of the theme — never which one is the current
+  round's — so it doesn't undo the round-token answer hiding. Brands and
+  club crests deliberately stay free-typing (a suggestion list would make
+  short names trivial).
+- `PixelatedLogo` sizes its canvas from the loaded image's natural
+  proportions, not the theme's `aspectW`/`aspectH` (only a placeholder
+  until the image loads): RAWG's `background_image` is landscape key art,
+  not a portrait box cover, and forcing it into the theme's old 3:4 frame
+  squashed every video game image. The reveal curve (`pixelResolution`)
+  is interpolated on a log scale — see the table in its comment before
+  retuning it.
 - `lib/api-spec/openapi.yaml` is the source of truth for the REST API;
   `lib/api-zod` (Zod schemas) and `lib/api-client-react` (React Query
   hooks) are generated from it via
@@ -289,8 +305,9 @@ current list. Headline items at time of writing:
 2. Reconnecting mid-round (e.g. a page refresh) leaves a multiplayer
    client stuck on the "waiting for host" screen — the server never
    replays a `round:start` to a socket that (re)joins mid-game.
-3. `PixelatedLogo` reloads the image from the network on every
-   `progress` tick (~10/s) with no cleanup of in-flight loads.
+3. ~~`PixelatedLogo` reloads the image from the network on every
+   `progress` tick~~ — fixed: the image loads once per `src` and progress
+   ticks only redraw the canvas from it.
 4. No rate limiting or server-side proof-of-play anywhere (solo score
    submission, guesses, room creation, logo reports). Note this is
    distinct from the "answer visible in the Network tab" cheat, which is

@@ -51,9 +51,23 @@ export const ListThemesResponseItem = zod.object({
   "nameEn": zod.string(),
   "imageProvider": zod.string(),
   "aspectW": zod.number().int(),
-  "aspectH": zod.number().int()
+  "aspectH": zod.number().int(),
+  "autocomplete": zod.boolean().describe('Whether guesses get autocompletion (see /game/theme-answers)')
 })
 export const ListThemesResponse = zod.array(ListThemesResponseItem)
+
+
+/**
+ * Only served for themes whose `autocomplete` flag is true (movies, TV series, video games — long, hard-to-spell titles); 404 otherwise. It lists every candidate answer of the theme, never which one is the current round's, so it doesn't leak anything a round token hides.
+ * @summary Guess autocomplete list (every answer of a theme, in one locale)
+ */
+export const ListThemeAnswersQueryParams = zod.object({
+  "themeId": zod.coerce.string(),
+  "locale": zod.enum(['fr', 'en']).optional()
+})
+
+export const ListThemeAnswersResponseItem = zod.string()
+export const ListThemeAnswersResponse = zod.array(ListThemeAnswersResponseItem)
 
 
 /**

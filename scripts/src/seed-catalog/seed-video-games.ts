@@ -8,7 +8,10 @@ import { eq } from "drizzle-orm";
 import { db, pool, themesTable, catalogItemsTable, makeCatalogItemId, type NewTheme, type NewCatalogItem } from "@workspace/db";
 
 const THEME_ID = "video-games";
-const theme: NewTheme = { id: THEME_ID, nameFr: "Jeux vidéo", nameEn: "Video games", imageProvider: "rawg", aspectW: 3, aspectH: 4, enabled: true, sortOrder: 3 };
+const theme: NewTheme = { id: THEME_ID, nameFr: "Jeux vidéo", nameEn: "Video games", imageProvider: "rawg", aspectW: 16, aspectH: 9, enabled: true, sortOrder: 3 };
+// RAWG has no box-art field: `background_image` is a landscape key-art /
+// screenshot (~16:9), so the theme's aspect ratio must be landscape too —
+// it used to be 3:4, which squashed every image into a portrait frame.
 const API_BASE = "https://api.rawg.io/api/games";
 const PAGE_SIZE = 40;
 // "-added" (most added to players' libraries) is a much better proxy for

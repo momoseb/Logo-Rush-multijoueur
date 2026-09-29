@@ -59,6 +59,16 @@ export const getThemes = () => themes.filter((t) => t.enabled).sort((a, b) => a.
 export const getThemeById = (themeId: string) => themes.find((t) => t.id === themeId);
 const itemsForTheme = (themeId: string) => catalogItems.filter((item) => item.themeId === themeId);
 export const getCatalogItems = () => catalogItems;
+
+// Guess autocompletion is only offered for themes whose answers are long,
+// hard-to-spell titles (movie/series/video game names) — keyed by image
+// provider rather than theme id so a new TMDB/RAWG-backed theme gets it for
+// free. Brands and club crests stay free-typing: their answers are short,
+// and a suggestion list would make them trivial.
+const AUTOCOMPLETE_PROVIDERS = new Set(["tmdb", "rawg"]);
+export const themeHasAutocomplete = (theme: Theme) => AUTOCOMPLETE_PROVIDERS.has(theme.imageProvider);
+export const getThemeAnswers = (themeId: string, locale: "fr" | "en") =>
+  [...new Set(itemsForTheme(themeId).map((item) => pickAnswer(item, locale)))].sort((a, b) => a.localeCompare(b, locale));
 export const findCatalogItem = (itemId: string) => catalogItems.find((item) => item.id === itemId);
 
 const DEFAULT_THEME_ID = "brands";

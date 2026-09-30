@@ -1,0 +1,54 @@
+<!doctype html>
+<!-- Source de public/og-image.png (1200x630). Rendu : voir SEO.md, section "Régénérer les visuels". -->
+<html lang="fr"><head><meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&display=swap');
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif; color: #F8FAFC;
+    background:
+      radial-gradient(700px 500px at 100% 0%, rgba(196,77,255,.35), transparent 60%),
+      radial-gradient(700px 500px at 0% 100%, rgba(26,217,255,.28), transparent 60%),
+      #0B0D19;
+    display: flex; align-items: center; padding: 0 56px; gap: 40px;
+  }
+  .left { width: 450px; flex: none; }
+  h1 {
+    font-size: 140px; line-height: .9; font-weight: 800; letter-spacing: -6px;
+    background: linear-gradient(135deg, #C44DFF, #1AD9FF); -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .tag { margin-top: 28px; font-size: 34px; white-space: nowrap; font-weight: 700; line-height: 1.15; }
+  .chips { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .chips span { font-size: 20px; font-weight: 500; color: #94A3B8; border: 2px solid #1E2440; background: #12162B; border-radius: 999px; padding: 6px 16px; }
+  .right { display: flex; align-items: center; gap: 12px; flex: none; }
+  .right canvas { width: 176px; height: 176px; border-radius: 22px; border: 2px solid #1E2440; }
+  .arrow { font-size: 34px; color: #94A3B8; font-weight: 700; }
+  .foot { position: absolute; left: 56px; bottom: 34px; font-size: 24px; color: #94A3B8; font-weight: 500; }
+</style></head>
+<body>
+  <div class="left">
+    <h1>LOGO<br>RUSH</h1>
+    <p class="tag">Devine avant les autres.</p>
+    <div class="chips"><span>Marques</span><span>Foot</span><span>Films</span><span>Séries</span><span>Jeux vidéo</span></div>
+  </div>
+  <div class="right">
+    <canvas id="a" width="380" height="380"></canvas><span class="arrow">›</span>
+    <canvas id="b" width="380" height="380"></canvas><span class="arrow">›</span>
+    <canvas id="c" width="380" height="380"></canvas>
+  </div>
+  <p class="foot">Gratuit · Sans inscription · Solo &amp; multijoueur</p>
+<script>
+  function tile(id, n) {
+    const canvas = document.getElementById(id), s = canvas.width;
+    const off = document.createElement('canvas'); off.width = off.height = n;
+    const c = off.getContext('2d');
+    c.fillStyle = '#12162B'; c.fillRect(0, 0, n, n);
+    const g = c.createLinearGradient(0, 0, n, n); g.addColorStop(0, '#C44DFF'); g.addColorStop(1, '#1AD9FF');
+    c.fillStyle = g; c.font = `800 ${n * 0.95}px Arial, Helvetica, sans-serif`;
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('?', n / 2, n / 2 + n * 0.05);
+    const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false; ctx.drawImage(off, 0, 0, n, n, 0, 0, s, s);
+  }
+  tile('a', 7); tile('b', 16); tile('c', 380);
+</script>
+</body></html>

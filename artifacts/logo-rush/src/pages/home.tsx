@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
+import { HomeSeoContent } from '@/components/home-seo-content';
 import { Gamepad2, Users, Trophy, ChevronRight, Activity, Medal, ShieldCheck, Info } from 'lucide-react';
 
 export default function Home() {
@@ -165,6 +166,8 @@ export default function Home() {
           {t('about.title')}
         </Button>
       </div>
+
+      <HomeSeoContent />
     </motion.div>
   );
 }

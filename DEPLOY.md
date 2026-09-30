@@ -61,8 +61,12 @@ n'est nécessaire pour accepter les requêtes cross-origin depuis Vercel.
 Le fichier `artifacts/logo-rush/vercel.json` définit déjà la commande de
 build (qui s'installe et se construit depuis la racine du monorepo via
 `pnpm --filter`), le dossier de sortie et la réécriture SPA nécessaire
-pour que les routes client (`/room/ABCD`, `/leaderboard`, ...) se
-chargent directement sans passer par le serveur.
+pour que les routes client se chargent directement sans passer par le
+serveur : les pages publiques sont pré-rendues au build (`vite-plugin-seo.ts`),
+les routes privées (`/room/:code`, `/multiplayer`, `/logo-audit`,
+`/admin/catalog`) sont réécrites vers `index.html` — **liste explicite,
+à compléter pour toute nouvelle route privée** (les URL inconnues renvoient
+un vrai 404 via `404.html`). Voir `SEO.md`.
 
 Dans le dashboard Vercel (« Import Project » sur ce repo) :
 
@@ -74,6 +78,10 @@ Dans le dashboard Vercel (« Import Project » sur ce repo) :
      permet au frontend de parler à un backend sur un autre domaine.
    - `VITE_BRANDFETCH_CLIENT_ID` = l'identifiant public Brandfetch
      (actuellement `1idke8AlkDn4BHhX1fs`, visible dans `.replit`)
+   - `VITE_SITE_URL` = l'origine publique du site (ex.
+     `https://logorush.fr`, sans slash final) — utilisée au build pour les
+     URL canoniques, Open Graph et le sitemap. Voir `SEO.md`. Sans elle, le
+     build se rabat sur `VERCEL_PROJECT_PRODUCTION_URL`.
 
 `PORT`/`BASE_PATH` ne sont plus requis : `vite.config.ts` les valorise
 par défaut désormais (ils ne servent de toute façon qu'à `vite

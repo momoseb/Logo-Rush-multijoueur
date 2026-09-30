@@ -73,6 +73,17 @@ gotcha).
   `node .../install.js` one-off (doesn't help CI) or `--ignore-scripts`
   (skips the package's real setup) — run `pnpm approve-builds --all -y`
   in a normal terminal and commit the `allowBuilds:` entry it adds.
+- **SEO is a build-time plugin, and `vercel.json` rewrites are an explicit
+  list — not a catch-all.** `artifacts/logo-rush/vite-plugin-seo.ts` fills
+  the `seo-head`/`seo-body` markers in `index.html`, emits one prerendered
+  HTML file per public route + `404.html`, `sitemap.xml` and `robots.txt`
+  (there is intentionally no `public/robots.txt`). Route metadata lives in
+  `src/lib/seo-routes.ts`, shared with the client-side `SeoManager`. Adding a
+  *public* page → add it to `SEO_ROUTES`. Adding a *private* SPA route → add
+  it to `vercel.json` `rewrites` (and `headers` for `noindex`), otherwise
+  Vercel answers 404 for it in production. Never hardcode the site's domain:
+  it comes from `VITE_SITE_URL` (else Vercel's `VERCEL_PROJECT_PRODUCTION_URL`).
+  See `SEO.md`.
 - **The socket returned by `lib/socket.ts#getSocket()` is a module-level
   singleton reused for the whole app lifetime** (room gameplay, home-page
   presence/live-stats, everything). Never call `socket.disconnect()` for
@@ -332,6 +343,7 @@ across sessions._
 ## Pointers
 
 - `DEPLOY.md` — Vercel + Render production topology, local dev setup.
+- `SEO.md` — domain recommendation, SEO setup, what's left to do.
 - `render.yaml` — backend infra-as-code (Render Blueprint).
 - `artifacts/logo-rush/vercel.json` — frontend build/rewrite config.
 - `replit.md` — Replit-specific run commands and product summary.

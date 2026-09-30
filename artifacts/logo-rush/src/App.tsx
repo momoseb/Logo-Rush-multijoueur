@@ -5,6 +5,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { LanguageSwitcher } from '@/components/language-switcher';
+import { SeoManager } from '@/components/seo-manager';
 import { useHealthCheck, getHealthCheckQueryKey, getGetGameStatsQueryKey } from '@workspace/api-client-react';
 import {
   Route,
@@ -100,6 +101,7 @@ function App() {
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL?.replace(/\/$/, '')}>
           <OnlinePresence />
+          <SeoManager />
           <main className="min-h-[100dvh] flex flex-col items-center p-4 sm:p-8">
             <div className="w-full max-w-5xl mx-auto flex-1 flex flex-col relative">
               {/* Animated decorative elements could go here */}

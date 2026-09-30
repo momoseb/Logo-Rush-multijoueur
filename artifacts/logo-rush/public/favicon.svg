@@ -1,3 +1,22 @@
 <svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="180" height="180" rx="36" fill="#FF3C00"/>
+  <defs>
+    <linearGradient id="g" x1="30" y1="30" x2="150" y2="150" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C44DFF"/>
+      <stop offset="1" stop-color="#1AD9FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="180" height="180" rx="40" fill="#0B0D19"/>
+  <g fill="url(#g)">
+    <rect x="30" y="30" width="22" height="22" rx="3"/>
+    <rect x="30" y="54" width="22" height="22" rx="3"/>
+    <rect x="30" y="78" width="22" height="22" rx="3"/>
+    <rect x="30" y="102" width="22" height="22" rx="3"/>
+    <rect x="30" y="126" width="22" height="22" rx="3"/>
+    <rect x="54" y="126" width="22" height="22" rx="3"/>
+    <rect x="78" y="126" width="22" height="22" rx="3"/>
+    <rect x="102" y="126" width="22" height="22" rx="3"/>
+    <rect x="126" y="126" width="22" height="22" rx="3" opacity=".6"/>
+    <rect x="126" y="102" width="22" height="22" rx="3" opacity=".3"/>
+    <rect x="102" y="102" width="22" height="22" rx="3" opacity=".15"/>
+  </g>
 </svg>

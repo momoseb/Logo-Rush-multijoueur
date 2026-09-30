@@ -11,7 +11,7 @@ import { GuessInput, useGuessSuggestions } from '@/components/guess-input';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Users, Trophy, Play, Check, X, Clock, Copy, Crown, Swords } from 'lucide-react';
+import { ArrowLeft, Users, Trophy, Play, Check, X, Clock, Copy, Crown, Share2, Swords } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { PixelatedLogo } from '@/components/pixelated-logo';
@@ -223,6 +223,27 @@ export default function Room() {
     toast({ description: t('room.codeCopied') });
   };
 
+  // The invite link is the game's main growth loop: friends land straight on
+  // the room (the /room/:code deep link asks for a nickname, then joins).
+  const shareInvite = async () => {
+    const url = `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, '')}/room/${code}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Logo Rush',
+          text: t('room.shareText', { room: roomName || t('room.defaultName') }),
+          url,
+        });
+        return;
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        // Share sheet unavailable or failed: fall through to copying the link.
+      }
+    }
+    await navigator.clipboard.writeText(url);
+    toast({ description: t('room.linkCopied') });
+  };
+
   const amIHost = myPlayerId === hostId;
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
 
@@ -296,6 +317,16 @@ export default function Room() {
               <span className="text-muted-foreground">{t('room.code')}</span>
               <span className="font-mono bg-primary/20 text-primary px-3 py-1 rounded-md text-lg tracking-widest">{code}</span>
               <Button variant="ghost" size="icon" onClick={copyCode}><Copy className="h-4 w-4" /></Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={shareInvite}
+                aria-label={t('room.shareInvite')}
+                title={t('room.shareInvite')}
+                data-testid="button-share-room"
+              >
+                <Share2 className="h-4 w-4" />
+              </Button>
             </div>
           </div>
           <div className="w-24" /> {/* Spacer for balance */}

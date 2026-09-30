@@ -2,6 +2,7 @@ import path from 'path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
+import { seoPlugin } from './vite-plugin-seo';
 
 // PORT/BASE_PATH only matter for `vite dev`/`vite preview` (a plain `vite
 // build`, as used by Vercel, ignores both). Default them instead of
@@ -12,7 +13,7 @@ const devApiProxyTarget = process.env.VITE_DEV_API_PROXY_TARGET || 'http://127.0
 
 export default defineConfig({
   base: basePath,
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), seoPlugin()],
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, 'src'),
